@@ -2,13 +2,11 @@
 # All pytorch modules 
 import torch
 import torch.nn as nn
-from torch.nn import Conv2d,Linear,Flatten,ReLU
 
 #All supporting modules 
 import random
 import numpy 
 import time 
-from networks import ConvolutionalNetwork, IMG_NET, IMG_NET3
 import copy
 from matplotlib import pyplot as plt 
 import utilities
@@ -40,8 +38,7 @@ class Snake:
 		self.device 			= device
 
 
-		#	Hopefully is a CNN 
-		# 	must be a torch.nn Module
+		# 	Must be a torch.nn Module
 		self.target_model 		= target_model
 		self.target_model.to(device)
 

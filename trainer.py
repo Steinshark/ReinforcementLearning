@@ -2,68 +2,64 @@ import networks
 import torch 
 import os 
 import time 
-import SnakeConcurrent
+import SnakeConcurrentIMG
 import random 
 from matplotlib import pyplot as plt 
 import numpy 
 import sys 
 import tkinter as tk
-from snakeAI import SnakeGame
 from telemetry import plot_game
 import copy
 from utilities import reduce_arr
 
 class Trainer:
 
-	def __init__(	self,game_w,game_h,
-					visible=True,
-					loading=True,
-					PATH="models",
-					history=4,
-					loss_fn=torch.nn.MSELoss,
-					optimizer_fn=torch.optim.Adam,
-					kwargs={"lr":1e-5},
+	def __init__(	self,
+			  		game_w,
+			  		game_h,
+					model_class:networks.SnakeNetwork,
+					input_dim,
+					loss_fn			= torch.nn.MSELoss,
+					optimizer_fn	= torch.optim.Adam,
+					optimizer_kwargs={'lr':.0001},
+					activation		= torch.nn.functional.relu,
+
+					#Training Vars
+					visible			= True,
+					gamma			= .96,
+					epsilon			= .2,
+					
+					#Telemetry Vars 
+					steps			= None,
+					scored			= None,
+					output			= sys.stdout,
+					score_tracker	= [],
+					step_tracker	= [],
+					game_tracker	= [],
+					progress_var	= None,
+
 					fname="experiences",
 					name="generic",
-					gamma=.96,
-					gpu_acceleration=False,
-					epsilon=.2,
-					m_type="CNN",
 					save_fig_now=False,
-					progress_var=None,
-					output=sys.stdout,
-					steps=None,
-					scored=None,
-					score_tracker=[],
-					step_tracker=[],
-					best_score=0,
-					best_game=0,
-					game_tracker=[],
 					instance=None,
-					dropout_p=0,
 					lr_threshs=[],
-					activation=torch.nn.ReLU,
 					gui=False):
 
 
 		
 
 		#Set file handling vars 
-		self.PATH 				= PATH
+		self.PATH 				= "C:/Users/Default/temp/models"
 		self.fname 				= fname
 		self.name 				= name
 		self.save_fig 			= save_fig_now
 
 		#Set model vars  
-		self.m_type 			= m_type
-		self.input_dim 			= game_w * game_h * history
+		self.input_dim 			= input_dim
 		self.progress_var 		= progress_var
-		self.gpu_acceleration 	= gpu_acceleration
 		self.movement_repr_tuples = [(0,-1),(0,1),(-1,0),(1,0)]
-		self.loss_fn = loss_fn
-		self.optimizer_fn 		= optimizer_fn
+		self.loss_fn 			= loss_fn
 		self.activation 		= activation
-		self.in_ch 				= history * 2 
 
 		#Set runtime vars 
 		self.cancelled 			= False
@@ -75,7 +71,6 @@ class Trainer:
 		self.steps_out 			= steps
 		self.score_out			= scored
 		self.best_score 		= 0 
-		self.best_game 			= best_game
 		self.all_scores 		= score_tracker
 		self.all_lived 			= step_tracker
 		self.output 			= output
@@ -84,12 +79,12 @@ class Trainer:
 		self.gui 				= gui
 		self.base_threshs		= [(-1,.00003),(1024+256,.00001),(1024+512+256,3e-6),(2048,1e-6),(4096,5e-7),(4096+2048,2.5e-7),(8192,1e-7),(8192*2,1e-8)] if not lr_threshs else lr_threshs
 		self.errors 			= [0,0,0,0,0] 
+		
 		#Set training vars 
 		self.gamma 				= gamma
-		self.history 			= history
 		self.epsilon 			= epsilon
 		self.e_0 				= self.epsilon
-		self.kwargs				= kwargs
+
 		#Enable cuda acceleration if specified 
 		self.device 			= torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
@@ -97,14 +92,11 @@ class Trainer:
 
 
 		#Generate models for the learner agent 
-		# if self.w < 15:
-		# 	self.model_fn 			= networks.ConvNet 
-		# else:
-		# 	self.model_fn 			= networks.ConvNet20
-		self.model_fn 			= instance.settings["arch"]
+		self.model_class 		= model_class
 
-		self.learning_model 	= self.model_fn(in_ch=self.in_ch,lr=self.base_threshs[0][1],act_fn=self.activation,optimizer=self.optimizer_fn,loss_fn=self.loss_fn,w=self.w,h=self.h)
-		self.target_model		= self.model_fn(in_ch=self.in_ch,lr=self.base_threshs[0][1],act_fn=self.activation,optimizer=self.optimizer_fn,loss_fn=self.loss_fn,w=self.w,h=self.h)
+		self.learning_model 	= self.model_class(self.input_dim,self.loss_fn,self.activation)
+		self.target_model		= self.model_class(self.input_dim,self.loss_fn,self.activation)
+		self.optimizer_fn 		= optimizer_fn(self.learning_model.parameters(),**optimizer_kwargs)
 		print(f"Training with arch:\n{self.learning_model}")
 	
 		self.target_model.to(self.device)
@@ -146,7 +138,7 @@ class Trainer:
 
 
 			#	GET EXPERIENCES
-			metrics, experiences, new_games = SnakeConcurrent.Snake(self.w,self.h,self.learning_model,simul_games=train_every,history=self.history,device=self.device,rewards=rewards,max_steps=max_steps).play_out_games(epsilon=e)
+			metrics, experiences, new_games = SnakeConcurrentIMG.Snake(self.w,self.h,self.learning_model,simul_games=train_every,device=self.device,rewards=rewards,max_steps=max_steps).play_out_games(epsilon=e)
 
 
 
@@ -240,7 +232,7 @@ class Trainer:
 			
 			#	UPDATE MODELS 
 			if i/train_every % transfer_models_every == 0:
-				self.transfer_models(transfer=True,verbose=verbose)
+				self.transfer_models(verbose=verbose)
 			
 			i += train_every
 
@@ -252,7 +244,7 @@ class Trainer:
 	def cleanup(self):
 		blocked_scores		= reduce_arr(self.all_scores,self.x_scale)
 		blocked_lived 		= reduce_arr(self.all_lived,self.x_scale)
-		graph_name = f"{self.name}_[{str(self.loss_fn).split('.')[-1][:-2]},{str(self.optimizer_fn).split('.')[-1][:-2]}@{self.kwargs['lr']}]]]"
+		graph_name = f"{self.name}_[{str(self.loss_fn).split('.')[-1][:-2]},{str(self.optimizer_fn).split('.')[-1][:-2]}]]]"
 
 		if self.save_fig:
 			plot_game(blocked_scores,blocked_lived,graph_name)
@@ -264,14 +256,18 @@ class Trainer:
 
 	def train_on_experiences(self,big_set,epochs=1,batch_size=8,early_stopping=True,verbose=False):
 		
+		num_batches = int(len(big_set) / batch_size)
+
 		#Telemetry 
 		if verbose:
 			print(f"TRAINING:")
-			print(f"\tDataset:\n\t\t{'loss-fn'.ljust(12)}: {str(self.learning_model.loss).split('(')[0]}\n\t\t{'optimizer'.ljust(12)}: {str(self.learning_model.optimizer).split('(')[0]}\n\t\t{'size'.ljust(12)}: {len(big_set)}\n\t\t{'lr'.ljust(12)}: {self.learning_model.optimizer.param_groups[0]['lr']:.8f}\n")
+			print(f"\tDataset:\n\t\t{'loss-fn'.ljust(12)}: {str(self.learning_model.loss).split('(')[0]}\n\t\t{'optimizer'.ljust(12)}: {str(self.learning_model.optimizer).split('(')[0]}\n\t\t{'size'.ljust(12)}: {len(big_set)}\n\t\t{'lr'.ljust(12)}: {self.learning_model.optimizer.param_groups[0]['lr']:.8f}\n\t\t{'batches'.ljust(12)}: {num_batches}")
 
 		for epoch_i in range(epochs):
+			
 			if self.gui and self.parent_instance.cancel_var:
 				return
+			
 			#	Telemetry Vars 
 			t0 			= time.time()
 			t_gpu 		= 0
@@ -283,10 +279,6 @@ class Trainer:
 			#	Telemetry
 			if verbose:
 				print(f"\tEPOCH: {epoch_i}\tPROGRESS- [",end='')
-	
-
-			#	Do one calc for all runs 
-			num_batches = int(len(big_set) / batch_size)
 
 
 			# Iterate through batches
@@ -295,6 +287,7 @@ class Trainer:
 				i_start 					= batch_i * batch_size
 				i_end   					= i_start + batch_size
 				
+
 				#	Telemetry
 				percent = batch_i / num_batches
 				if verbose:
@@ -354,27 +347,22 @@ class Trainer:
 		self.errors 	= self.errors[1:] + [self.error]
 
 
-	def transfer_models(self,transfer=False,verbose=False,optimize=False):
-		if transfer:
-			self.output.insert(tk.END,f"\tTransferring Model\n")
-			if verbose:
-				print("\ntransferring models\n\n")
-			#Save the models
+	def transfer_models(self,verbose=False,optimize=False):
+		self.output.insert(tk.END,f"\tTransferring Model\n")
+		if verbose:
+			print("\ntransferring models\n\n")
 
-			#Check for dir 
-			if not os.path.isdir(self.PATH):
-				os.mkdir(self.PATH)
-			torch.save(self.learning_model.state_dict(),os.path.join(self.PATH,f"{self.fname}_lm_state_dict"))
-			#Load the learning model as the target model
-			self.target_model	= self.model_fn(in_ch=self.in_ch,lr=self.base_threshs[0][1],act_fn=self.activation,optimizer=self.optimizer_fn,loss_fn=self.loss_fn,w=self.w,h=self.h)
-			self.target_model.load_state_dict(torch.load(os.path.join(self.PATH,f"{self.fname}_lm_state_dict")))
-			self.target_model.to(self.device)
+		#Save the models
+		if not os.path.isdir(self.PATH):
+			os.mkdir(self.PATH)
+		torch.save(self.learning_model.state_dict(),os.path.join(self.PATH,f"{self.fname}_lm_state_dict"))
+		
+		#Load the learning model as the target model
+		self.target_model		= self.model_class(self.input_dim,self.optimizer_fn,self.loss_fn,self.activation)
+		self.target_model.load_state_dict(torch.load(os.path.join(self.PATH,f"{self.fname}_lm_state_dict")))
+		self.target_model.to(self.device)
 
-			#trace 
-			if optimize:
-				self.target_model.eval()
-				self.target_model 	= torch.jit.trace(self.target_model,torch.randn(1,self.history*2,self.h,self.w))
-				self.target_model   = torch.jit.freeze(self.target_model)
+		self.target_model.eval()
 
 
 	def load_prev_models(self):
@@ -396,5 +384,5 @@ class Trainer:
 
 if __name__ == "__main__":
 
-	t = Trainer(10,10,True,False,"exps",history=2,kwargs={'lr':.0001},gamma=.75,epsilon=.5)
+	t = Trainer(10,10,True,False,"exps",history=2,gamma=.75,epsilon=.5)
 	t.train_concurrent(1024*128,train_every=32,pool_size=1024*16,sample_size=2048,batch_size=32,epochs=1,transfer_models_every=4,verbose=True)

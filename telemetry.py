@@ -48,13 +48,7 @@ def plot_game(scores_list=[],steps_list=[],series_names="Empty",x_scales=[],grap
 #                  "CNN_3"    : {"type":"CNmedN","arch":[[3,8,11],[8,8,3],[6400,1024],[1024,4]]},
 #                  "CNN_4"    : {"type":"CNN","arch":[[3,32,3],[32,64,3],[128,64],[64,4]]}}
 
-ARCHITECTURES = {   "fcn_sm"    : networks.FCN,
-                    "fcn_md"    : networks.FCN2,
-                    "longnet"   : networks.FCN3,
-                    "long"      : networks.FullConvNet,
-                    "sm"        : networks.ConvNetSm,
-                    "med"       : networks.ConvNet,
-                    "Lg"        : networks.ConvNet20
+ARCHITECTURES = {   "conv_sm"   : networks.SnakeConvNetSm
 }
 
 LOSSES      = { "MSE"       : torch.nn.MSELoss,
@@ -66,13 +60,13 @@ OPTIMIZERS  = { "Adam"      : torch.optim.Adam,
                 "SGD"       : torch.optim.SGD,
                 "RMSProp"   : torch.optim.RMSprop}
 
-ACTIVATIONS = { "ReLU"      : torch.nn.ReLU, 
-                "ReLU6"     : torch.nn.ReLU6,
-                "LeakyReLU" : torch.nn.LeakyReLU,
-                "Sigmoid"   : torch.nn.Sigmoid,
-                "Tanh"      : torch.nn.Tanh,
-                "CELU"      : torch.nn.CELU,
-                "ELU"       : torch.nn.ELU}
+ACTIVATIONS = { "ReLU"      : torch.nn.functional.relu, 
+                "ReLU6"     : torch.nn.functional.relu6,
+                "LeakyReLU" : torch.nn.functional.leaky_relu,
+                "Sigmoid"   : torch.nn.functional.sigmoid,
+                "Tanh"      : torch.nn.functional.tanh,
+                "CELU"      : torch.nn.functional.celu,
+                "ELU"       : torch.nn.functional.elu}
 
 DEFAULTS    = { "gameX"     : 14,
                 "gameY"     : 14,
