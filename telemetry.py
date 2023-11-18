@@ -48,7 +48,9 @@ def plot_game(scores_list=[],steps_list=[],series_names="Empty",x_scales=[],grap
 #                  "CNN_3"    : {"type":"CNmedN","arch":[[3,8,11],[8,8,3],[6400,1024],[1024,4]]},
 #                  "CNN_4"    : {"type":"CNN","arch":[[3,32,3],[32,64,3],[128,64],[64,4]]}}
 
-ARCHITECTURES = {   "conv_sm"   : networks.SnakeConvNetSm
+ARCHITECTURES = {   "conv_sm"   : networks.SnakeConvNetSm,
+                    "conv_md"   : networks.SnakeConvNetMd,
+                    "conv_lg"   : networks.SnakeConvNetLg
 }
 
 LOSSES      = { "MSE"       : torch.nn.MSELoss,
@@ -68,30 +70,30 @@ ACTIVATIONS = { "ReLU"      : torch.nn.functional.relu,
                 "CELU"      : torch.nn.functional.celu,
                 "ELU"       : torch.nn.functional.elu}
 
-DEFAULTS    = { "gameX"     : 14,
-                "gameY"     : 14,
-                "iters"     : 100*2000,
-                "te"        : 100,
-                "ps"        : 10000,
-                "ss"        : 1000,
-                "bs"        : 50,
-                "lr"        : .0001,
+DEFAULTS    = { "gameX"     : 20,
+                "gameY"     : 20,
+                "iters"     : 100*1000,
+                "te"        : 1,
+                "ps"        : 16384,
+                "ss"        : 1024,
+                "bs"        : 16,
+                "lr"        : .0002,
                 "hs"        : 3,
                 "kw"        : "{'weight_decay':0}",
-                "ll"        : "[(i,.025*.5*.965**(j+24)) for j,i in enumerate([-1]+[500*k for k in range(100)] )]",
+                "upd"        : False,
                 "ep"        : 1,
                 "mt"        : .05,
-                "mx"        : 14*14,
+                "mx"        : 20*20,
                 "arch"      : "",
                 "lo"        : "",
                 "op"        : "",
                 "ac"        : "",
-                "tr"        : 5,
-                "drop"      : .1,
-                "gam"       : .9,
+                "tr"        : 4,
+                "gam"       : .99,
                 "gpu"       : False,
-                "rew"       : "{'die':-10,'eat':12,'step':0}",
-                "rpick"     : .5
+                "rew"       : "{'die':-1,'eat':1,'step':0}",
+                "rpick"     : .25,
+                "run_name"  : "run1"
                 }
 
 

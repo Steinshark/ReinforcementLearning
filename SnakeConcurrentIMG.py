@@ -91,7 +91,7 @@ class Snake:
 
 	#	GAME PLAYER 
 	#	Calling this method will play out all games until completion
-	def play_out_games(self,epsilon=.2,debugging=False,display_img=True):
+	def play_out_games(self,epsilon=.2,debugging=False,display_img=False):
 
 		#	Track all imgs 
 		if display_img:
@@ -158,7 +158,8 @@ class Snake:
 			# 	Check if we are done 
 			if len(self.active_games) == 0:
 				#Display frames
-				if display_img and self.game_collection[0]['highscore'] > 0 and self.cur_step > 10:
+				
+				if display_img and self.game_collection[0]['highscore'] > 0 and self.cur_step > 4:
 					ex 			= vutils.make_grid(frame_sc.detach().cpu(),padding=1,normalize=True)
 					fig,axs 	= plt.subplots(nrows=1,ncols=1)
 					axs.axis 	= 'off'
@@ -265,7 +266,7 @@ class Snake:
 				self.game_collection[snake_i]["lived_for"] = self.cur_step
 
 				#Add final experience
-				experience = {"s":self.game_vectors.narrow(0,snake_i,1).clone(),"a":chosen_action,"r":self.reward['die'],'s`':self.game_vectors.narrow(0,snake_i,1).clone(),'done':0}
+				experience = {"s":self.game_vectors[snake_i,:,:].clone(),"a":chosen_action,"r":self.reward['die'],'s`':self.game_vectors[snake_i,:,:].clone(),'done':0}
 				
 				#Dont penalize fully for threshold
 				if self.game_collection[snake_i]['eaten_since'] > self.move_threshold:
@@ -275,7 +276,7 @@ class Snake:
 				continue
 			
 			#	START EXP CREATION 	
-			experience = {"s":self.game_vectors.narrow(0,snake_i,1).clone(),"a":chosen_action,"r":None,'s`':None,'done':1}
+			experience = {"s":self.game_vectors[snake_i,:,:].clone(),"a":chosen_action,"r":None,'s`':None,'done':1}
 			#	MOVE SNAKE  
 			#	Since the snake has survived, dim the previous snake and add over the new one  
 			#	the new snake state .
@@ -310,9 +311,9 @@ class Snake:
 			#Update game_state repr 
 			self.game_vectors[snake_i]				= utilities.step_snake_img(self.game_vectors[snake_i],self.snake_tracker[snake_i],self.food_vectors[snake_i],(self.grid_w,self.grid_h),img_w=self.img_repr_size[0],img_h=self.img_repr_size[1],min_thresh=self.min_thresh)
 			#	Add s` to the experience 
-			experience['s`'] 						= self.game_vectors.narrow(0,snake_i,1).clone()
+			experience['s`'] 						= self.game_vectors[snake_i,:,:].clone()
 			self.experiences.append(experience)
-			
+			#input(f"added exp s: {experience['s'].shape}\t{experience['s`'].shape}")
 
 		#Delete all items from mark_del  
 		for del_snake_i in mark_del:
@@ -351,7 +352,7 @@ class Snake:
 
 	#	RETURN TO TRAINER
 	def cleanup(self):
-		print(f"returning experiences {self.experiences[0]}")
+		#print(f"returning experiences {self.experiences[0]}")
 		return self.game_collection,self.experiences,self.full_game_tracker
 
 

@@ -37,18 +37,81 @@ class SnakeConvNetSm (SnakeNetwork):
 		#Create model 
 		self.conv1 			= torch.nn.Conv2d(input_dim[0],16,3,1,1)
 		self.conv2 			= torch.nn.Conv2d(16,64,5,1,1)
-		self.conv3 			= torch.nn.Conv2d(64,128,5,1,1)
 		self.avgpool 		= torch.nn.AdaptiveAvgPool2d(1)
-		self.lin1 			= torch.nn.Linear(128,32)
-		self.lin2 			= torch.nn.Linear(32,4)
+		self.lin1 			= torch.nn.Linear(64,16)
+		self.lin2 			= torch.nn.Linear(16,4)
+	
+	def forward(self,x:torch.Tensor) ->torch.Tensor:
 
-		self.model 			= torch.nn.ModuleList([self.conv1,self.conv2,self.conv3,self.avgpool,self.lin1,self.lin2])
+		x 					= self.activation_fn(self.conv1(x))
+		x 					= self.activation_fn(self.conv2(x))
+		#x 					= self.activation_fn(self.conv3(x))
+		x 					= self.avgpool(x)
+		x 					= x.view(x.shape[0],-1)
+		x 					= self.activation_fn(self.lin1(x))
+		x 					= self.lin2(x)
+
+		return 				x 
+
+
+class SnakeConvNetMd (SnakeNetwork):
+
+	def __init__(self,input_dim,loss_fn,activation_fn):
+
+		super(SnakeConvNetMd,self).__init__(input_dim,loss_fn,activation_fn)
+
+
+		#Create model 
+		self.conv1 			= torch.nn.Conv2d(input_dim[0],16,3,1,1)
+		self.conv2 			= torch.nn.Conv2d(16,32,5,1,1)
+		self.conv3 			= torch.nn.Conv2d(32,64,5,1,1)
+		self.conv4 			= torch.nn.Conv2d(64,128,5,1,1)
+		self.avgpool 		= torch.nn.AdaptiveAvgPool2d(1)
+		self.lin1 			= torch.nn.Linear(128,64)
+		self.lin2 			= torch.nn.Linear(64,4)
+
+		
 	
 	def forward(self,x:torch.Tensor) ->torch.Tensor:
 
 		x 					= self.activation_fn(self.conv1(x))
 		x 					= self.activation_fn(self.conv2(x))
 		x 					= self.activation_fn(self.conv3(x))
+		x 					= self.activation_fn(self.conv4(x))
+		x 					= self.avgpool(x)
+		x 					= x.view(x.shape[0],-1)
+		x 					= self.activation_fn(self.lin1(x))
+		x 					= self.lin2(x)
+
+		return 				x 
+
+
+class SnakeConvNetLg (SnakeNetwork):
+
+	def __init__(self,input_dim,loss_fn,activation_fn):
+
+		super(SnakeConvNetLg,self).__init__(input_dim,loss_fn,activation_fn)
+
+
+		#Create model 
+		self.conv1 			= torch.nn.Conv2d(input_dim[0],16,3,1,1)
+		self.conv2 			= torch.nn.Conv2d(16,32,5,1,1)
+		self.conv3 			= torch.nn.Conv2d(32,64,5,1,1)
+		self.conv4 			= torch.nn.Conv2d(64,128,5,1,1)
+		self.conv5 			= torch.nn.Conv2d(128,512,5,1,1)
+		self.avgpool 		= torch.nn.AdaptiveAvgPool2d(1)
+		self.lin1 			= torch.nn.Linear(512,128)
+		self.lin2 			= torch.nn.Linear(128,4)
+
+		
+	
+	def forward(self,x:torch.Tensor) ->torch.Tensor:
+
+		x 					= self.activation_fn(self.conv1(x))
+		x 					= self.activation_fn(self.conv2(x))
+		x 					= self.activation_fn(self.conv3(x))
+		x 					= self.activation_fn(self.conv4(x))
+		x 					= self.activation_fn(self.conv5(x))
 		x 					= self.avgpool(x)
 		x 					= x.view(x.shape[0],-1)
 		x 					= self.activation_fn(self.lin1(x))

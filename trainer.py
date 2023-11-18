@@ -42,7 +42,6 @@ class Trainer:
 					name="generic",
 					save_fig_now=False,
 					instance=None,
-					lr_threshs=[],
 					gui=False):
 
 
@@ -77,7 +76,6 @@ class Trainer:
 		self.parent_instance 	= instance
 		self.game_tracker 		= game_tracker
 		self.gui 				= gui
-		self.base_threshs		= [(-1,.00003),(1024+256,.00001),(1024+512+256,3e-6),(2048,1e-6),(4096,5e-7),(4096+2048,2.5e-7),(8192,1e-7),(8192*2,1e-8)] if not lr_threshs else lr_threshs
 		self.errors 			= [0,0,0,0,0] 
 		
 		#Set training vars 
@@ -96,7 +94,7 @@ class Trainer:
 
 		self.learning_model 	= self.model_class(self.input_dim,self.loss_fn,self.activation)
 		self.target_model		= self.model_class(self.input_dim,self.loss_fn,self.activation)
-		self.optimizer_fn 		= optimizer_fn(self.learning_model.parameters(),**optimizer_kwargs)
+		self.optimizer  		= optimizer_fn(self.learning_model.parameters(),**optimizer_kwargs)
 		print(f"Training with arch:\n{self.learning_model}")
 	
 		self.target_model.to(self.device)
@@ -118,7 +116,6 @@ class Trainer:
 		print(f"\tStart training with {random_pick}")
 		memory_pool 	= []
 		window_i 		= 0
-		threshs 		= copy.deepcopy(self.base_threshs)
 		stop_thresh  	= False 
 		#	Keep track of models progress throughout the training 
 		best_score 		= 0 
@@ -237,14 +234,16 @@ class Trainer:
 			i += train_every
 
 			if self.gui:
-				self.parent_instance.training_epoch_finished = True
+				self.parent_instance.training_epoch_finished 	= True
+				self.parent_instance.var_game.set(int(self.parent_instance.var_game.get()) + train_every)
+				self.parent_instance.var_error.set(self.error)
 		return self.cleanup()
 
 
 	def cleanup(self):
 		blocked_scores		= reduce_arr(self.all_scores,self.x_scale)
 		blocked_lived 		= reduce_arr(self.all_lived,self.x_scale)
-		graph_name = f"{self.name}_[{str(self.loss_fn).split('.')[-1][:-2]},{str(self.optimizer_fn).split('.')[-1][:-2]}]]]"
+		graph_name = f"{self.name}_[{str(self.loss_fn).split('.')[-1][:-2]},{str(self.optimizer).split('.')[-1][:-2]}]]]"
 
 		if self.save_fig:
 			plot_game(blocked_scores,blocked_lived,graph_name)
@@ -323,18 +322,18 @@ class Trainer:
 				for i,val in enumerate(best_predictions):
 					chosen_action						= action[i]
 					final_target_values[i,chosen_action]= rewards[i] + (done[i] * self.gamma * val)
-					if rewards[i] > .5 and random.random() < .01:
+					if rewards[i] > .5 and random.random() < .01 and False:
 						print(f"maxs {best_predictions}")
 						print(f"\nfor init val:{initial_target_predictions[i].cpu().detach().numpy()} + a:{chosen_action} - > update to {rewards[i]:.3f} + {self.gamma:.3f}*{val:.3f}*[done:{done[i]:.3f}] = {rewards[i] + (done[i] * self.gamma * val):.3f}")
 						print(f"training with {final_target_values[i].cpu().detach().numpy()}\n\n")
 				#	Calculate Loss
 				t1 							= time.time()
-				batch_loss 					= self.learning_model.loss(initial_target_predictions,final_target_values)
+				batch_loss 					= self.learning_model.loss_fn(initial_target_predictions,final_target_values)
 				total_loss 					+= batch_loss.mean().item()
 
 				#Back Propogate
 				batch_loss.backward()
-				self.learning_model.optimizer.step()
+				self.optimizer.step()
 				#print(f"optimizing with loss: {self.learning_model.loss} and optim {self.learning_model.optimizer}\n\n\n")
 				t_gpu += time.time() - t1
 			
@@ -348,8 +347,8 @@ class Trainer:
 
 
 	def transfer_models(self,verbose=False,optimize=False):
-		self.output.insert(tk.END,f"\tTransferring Model\n")
-		if verbose:
+		#self.output.insert(tk.END,f"\tTransferring Model\n")
+		if verbose and False:
 			print("\ntransferring models\n\n")
 
 		#Save the models
@@ -358,7 +357,7 @@ class Trainer:
 		torch.save(self.learning_model.state_dict(),os.path.join(self.PATH,f"{self.fname}_lm_state_dict"))
 		
 		#Load the learning model as the target model
-		self.target_model		= self.model_class(self.input_dim,self.optimizer_fn,self.loss_fn,self.activation)
+		self.target_model		= self.model_class(self.input_dim,self.loss_fn,self.activation)
 		self.target_model.load_state_dict(torch.load(os.path.join(self.PATH,f"{self.fname}_lm_state_dict")))
 		self.target_model.to(self.device)
 
