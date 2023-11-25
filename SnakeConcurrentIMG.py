@@ -58,7 +58,8 @@ class Snake:
 
 		#Encode games as a 3-channel m x n imgage 
 		self.game_vectors	    = torch.zeros(size=(simul_games,3,img_repr_size[1],img_repr_size[0]),device=device,dtype=torch.float32)
-
+		self.template_vectors 	= [None] * simul_games
+		
 		#	The game directions are tracked in this list. 
 		# 	Each tuple encodes the step taken in (x,y).
 		#
@@ -73,7 +74,7 @@ class Snake:
 
 		#	The snake is tracked in this list 
 		#	Used to update Numpy Arrays in a more efficient manner.
-		self.snake_tracker		= [ [[0,0]] for _ in range(simul_games) ]
+		self.snake_tracker		= [ [[random.randint(0,h-1),random.randint(0,w-1)]] for _ in range(simul_games) ]
 		self.full_game_tracker 	= [[] for _ in range(simul_games)]
 
 		#	Store all experiences in a list of 
@@ -102,16 +103,21 @@ class Snake:
 		self.graph_pending 	= False 
 
 		#	Setup utils to make the snake frames 
-		utilities.init_utils((self.grid_w,self.grid_h),self.img_repr_size[0],self.img_repr_size[1],torch.float32)
+		#utilities.init_utils((self.grid_w,self.grid_h),self.img_repr_size[0],self.img_repr_size[1],torch.float32)
+		
 		#	Spawn the snake in a random location each time
 		# 	Create the initial state_imgs for snakes 
 		for snake_i in range(self.simul_games):
 			game_start_x,game_start_y = random.randint(0,self.grid_w-1),random.randint(0,self.grid_h-1)
 			self.snake_tracker[snake_i] = [[game_start_x,game_start_y]]
 			t0 = time.time()
-			self.game_vectors[snake_i]			= utilities.build_snake_img(self.snake_tracker[snake_i],self.food_vectors[snake_i],(self.grid_w,self.grid_h),img_w=self.img_repr_size[0],img_h=self.img_repr_size[1])
 
+			#OLD
+			#self.game_vectors[snake_i]			= utilities.build_snake_img(self.snake_tracker[snake_i],self.food_vectors[snake_i],(self.grid_w,self.grid_h),img_w=self.img_repr_size[0],img_h=self.img_repr_size[1])
 
+			#NEW 
+			self.game_vectors[snake_i],self.template_vectors[snake_i]	= utilities.build_snake_img_sq(self.snake_tracker[snake_i],self.food_vectors[snake_i],(self.grid_w,self.grid_h),img_w=self.img_repr_size[0],img_h=self.img_repr_size[1])
+			
 
 
 
@@ -195,10 +201,7 @@ class Snake:
 			cur_dir = self.direction_vectors[snake_i]
 
 			#Give it only legal moves
-			if cur_dir in [0,1]:
-				self.direction_vectors[snake_i] = random.randint(2,3)
-			elif cur_dir == [2,3]:
-				self.direction_vectors[snake_i] = random.randint(0,1)
+			self.direction_vectors[snake_i] = random.randint(0,3)
 			
 			#self.direction_vectors[snake_i] = random.randint(0,3) 
 	
@@ -309,7 +312,7 @@ class Snake:
 			self.snake_tracker[snake_i] 			= [next_head] + self.snake_tracker[snake_i][:-1]
 
 			#Update game_state repr 
-			self.game_vectors[snake_i]				= utilities.step_snake_img(self.game_vectors[snake_i],self.snake_tracker[snake_i],self.food_vectors[snake_i],(self.grid_w,self.grid_h),img_w=self.img_repr_size[0],img_h=self.img_repr_size[1],min_thresh=self.min_thresh)
+			self.game_vectors[snake_i],self.template_vectors[snake_i]				= utilities.step_snake_img_sq(self.template_vectors[snake_i],self.snake_tracker[snake_i],self.food_vectors[snake_i],(self.grid_w,self.grid_h),img_w=self.img_repr_size[0],img_h=self.img_repr_size[1],min_thresh=self.min_thresh)
 			#	Add s` to the experience 
 			experience['s`'] 						= self.game_vectors[snake_i,:,:].clone()
 			self.experiences.append(experience)
@@ -374,11 +377,14 @@ if __name__ == "__main__":
 	h = 20
 	from networks import *
 	dev 	= torch.device('cpu')
-	model 	= IMG_NET_SIMPLE(input_shape=(3,240,135),device=dev)
-	s 		= Snake(w,h,model,simul_games=1,device=dev)
+	model 	= SnakeAdaptNet((3,10,10),torch.nn.MSELoss,torch.nn.functional.relu)
+	s 		= Snake(w,h,model,simul_games=1,device=dev,img_repr_size=(100,100))
 	s.saved_img = False 
-	s.play_out_games(display_img=True)
-	while s.saved_img == False:
-		print(f"retry")
-		s 		= Snake(w,h,model,simul_games=1,device=dev)
-		s.play_out_games(display_img=True)
+	s.game_vectors[0],s.template_vectors[0] = utilities.build_snake_img_sq(s.snake_tracker[0],s.food_vectors[0],(20,20),100,100)
+	for _ in range(5):
+		s.step_snake()
+		s.explore()
+	
+	b = s.game_vectors[0].permute(1,2,0)
+	plt.imshow(b.numpy())
+	plt.show()

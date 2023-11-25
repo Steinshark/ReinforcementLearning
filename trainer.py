@@ -28,6 +28,7 @@ class Trainer:
 					visible			= True,
 					gamma			= .96,
 					epsilon			= .2,
+					img_dim			= (160,90),
 					
 					#Telemetry Vars 
 					steps			= None,
@@ -82,6 +83,7 @@ class Trainer:
 		self.gamma 				= gamma
 		self.epsilon 			= epsilon
 		self.e_0 				= self.epsilon
+		self.img_dim 			= img_dim
 
 		#Enable cuda acceleration if specified 
 		self.device 			= torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -113,7 +115,7 @@ class Trainer:
 		#	Instead of copying a new memory_pool list 
 		#	upon overflow, simply replace the next window each time 
 
-		print(f"\tStart training with {random_pick}")
+		print(f"\tStart training with {self.optimizer}")
 		memory_pool 	= []
 		window_i 		= 0
 		stop_thresh  	= False 
@@ -135,7 +137,7 @@ class Trainer:
 
 
 			#	GET EXPERIENCES
-			metrics, experiences, new_games = SnakeConcurrentIMG.Snake(self.w,self.h,self.learning_model,simul_games=train_every,device=self.device,rewards=rewards,max_steps=max_steps).play_out_games(epsilon=e)
+			metrics, experiences, new_games = SnakeConcurrentIMG.Snake(self.w,self.h,self.learning_model,simul_games=train_every,device=self.device,rewards=rewards,max_steps=max_steps,img_repr_size=self.img_dim).play_out_games(epsilon=e)
 
 
 
@@ -243,6 +245,8 @@ class Trainer:
 	def cleanup(self):
 		blocked_scores		= reduce_arr(self.all_scores,self.x_scale)
 		blocked_lived 		= reduce_arr(self.all_lived,self.x_scale)
+		self.parent_instance.var_game.set(0)
+		self.parent_instance.set_game_plots()
 		graph_name = f"{self.name}_[{str(self.loss_fn).split('.')[-1][:-2]},{str(self.optimizer).split('.')[-1][:-2]}]]]"
 
 		if self.save_fig:
@@ -250,6 +254,7 @@ class Trainer:
 
 		if self.gui:
 			self.output.insert(tk.END,f"Completed Training\n\tHighScore:{self.best_score}\n\tSteps:{sum(self.all_lived[-1000:])/1000}")
+			self.parent_instance.varlist[self.parent_instance.settings["run_name"]]  = tk.IntVar(name=self.parent_instance.settings["run_name"],value=-1)
 		return blocked_scores,blocked_lived,self.best_score,graph_name
 
 
@@ -302,9 +307,9 @@ class Trainer:
 
 				#Gather batch experiences
 				batch_set 							= big_set[i_start:i_end]
-				init_states 						= torch.stack([exp['s']  for exp in batch_set]).type(torch.float)
+				init_states 						= torch.stack([exp['s']  for exp in batch_set]).type(torch.float32)
 				action 								= [exp['a'] for exp in batch_set]
-				next_states							= torch.stack([exp['s`'] for exp in batch_set]).type(torch.float)
+				next_states							= torch.stack([exp['s`'] for exp in batch_set]).type(torch.float32)
 				rewards 							= [exp['r']  for exp in batch_set]
 				done								= [exp['done'] for exp in batch_set]
 				
@@ -374,7 +379,7 @@ class Trainer:
 
 	@staticmethod
 	def update_epsilon(percent):
-		radical = -.4299573*100*percent -1.2116290 
+		radical = -.04299573*100*percent -1.2116290 
 		if percent > .50:
 			return 0
 		else:
@@ -383,5 +388,6 @@ class Trainer:
 
 if __name__ == "__main__":
 
-	t = Trainer(10,10,True,False,"exps",history=2,gamma=.75,epsilon=.5)
-	t.train_concurrent(1024*128,train_every=32,pool_size=1024*16,sample_size=2048,batch_size=32,epochs=1,transfer_models_every=4,verbose=True)
+	n 	= [pow(2.7182,-.0484299573*100*(percent/100)-1.2116290) for percent in range(100)]
+	plt.plot(n)
+	plt.show()

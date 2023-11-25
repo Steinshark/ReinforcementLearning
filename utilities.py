@@ -7,14 +7,14 @@ from matplotlib import pyplot as plt
 import torchvision.utils as vutils
 TIME_MULT   = 0 
 VECT_TYPE   = torch.float32
-SNAKE_SQ    = torch.ones(size=(1,1))
-HEAD_SQ    = torch.ones(size=(1,1))
-FOOD_SQ     = torch.ones(size=(1,1))
+SNAKE_SQ    = torch.ones(size=(3,1,1),dtype=torch.float32)
+HEAD_SQ    = torch.ones(size=(3,1,1),dtype=torch.float32)
+FOOD_SQ     = torch.ones(size=(3,1,1),dtype=torch.float32)
 TOP_L       = (0,0)
 BOT_R       = (0,0)
 SQUARE_SF   = 0 
 DEV         = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-COLORS      = {"snake":(0/255,255/255,0/255),"food":(255/255,0/255,0/255),'head':(0/255,255/255,255/255)}
+COLORS      = {"snake":torch.tensor([[[0/255]],[[255/255]],[[0/255]]]),"food":torch.tensor([[[255/255]],[[0/255]],[[0/255]]]),'head':torch.tensor([[[0/255]],[[255/255]],[[255/255]]])}
 
 
 
@@ -132,6 +132,66 @@ def step_snake_img(game_vector:torch.Tensor,snake_list,food_loc,board_size,img_w
 
     return game_vector
 
+
+def build_snake_img_sq(snake_list,food_loc,board_size,img_w,img_h,debugging=False,device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')) -> (torch.Tensor,torch.Tensor):
+
+    w                           = board_size[0]
+    h                           = board_size[1]
+
+    base_vector                 = torch.zeros(size=(3,w,h),dtype=torch.float32)
+
+    #Place head
+    #print(f"mult: {SNAKE_SQ.shape} x {COLORS['head'].shape} = {(torch.clone(SNAKE_SQ)*COLORS['head'])[:,0,0].shape}\nfitting into slice {base_vector[:,snake_list[0][1],snake_list[0][0]].shape}")
+    base_vector[:,snake_list[0][1],snake_list[0][0]]    = (torch.clone(SNAKE_SQ)*COLORS['head'])[:,0,0]
+
+    #Place body
+    for snake_part  in snake_list[1:]:
+        base_vector[:,snake_part[1],snake_part[0]]          = (torch.clone(SNAKE_SQ)*COLORS['snake'])[:,0,0]
+    
+    #Place food
+    base_vector[:,food_loc[1],food_loc[0]]    = (torch.clone(SNAKE_SQ)*COLORS['food'])[:,0,0]
+
+    #Upscale 
+    template_vector     = torch.clone(base_vector)
+    base_vector         = torch.nn.functional.interpolate(base_vector.unsqueeze(0),size=(img_h,img_w))[0]
+
+    #Show img 
+    if debugging:
+        print(f"img now size {base_vector.unsqueeze(0).shape}")
+        b = base_vector.permute(1,2,0)
+        plt.imshow(b.numpy())
+        plt.show()
+
+    #print(f"returning shapes: {base_vector.shape}\n {template_vector.shape}")
+    return base_vector.to(device), template_vector
+
+
+def step_snake_img_sq(template_vector:torch.Tensor,snake_list,food_loc,board_size,img_w=1280,img_h=720,dim_fact=.45,vect_init_type=torch.float32,min_thresh=.03,display_imgs=False):    
+    
+    #Dim playable surface and set threshold of 5 for pixels
+    MIN                     = torch.nn.Threshold(min_thresh,0,True) 
+    template_vector         *= dim_fact 
+    template_vector         = MIN(template_vector)
+
+    #Place head
+    #print(f"mult: {SNAKE_SQ.shape} x {COLORS['head'].shape} = {(torch.clone(SNAKE_SQ)*COLORS['head'])[:,0,0].shape}\nfitting into slice {template_vector[:,snake_list[0][1],snake_list[0][0]].shape}")
+    template_vector[:,snake_list[0][1],snake_list[0][0]]    = (torch.clone(SNAKE_SQ)*COLORS['head'])[:,0,0]
+
+    #Place body
+    for snake_part  in snake_list[1:]:
+        template_vector[:,snake_part[1],snake_part[0]]          = (torch.clone(SNAKE_SQ)*COLORS['snake'])[:,0,0]
+    
+    #Place food
+    template_vector[:,food_loc[1],food_loc[0]]    = (torch.clone(SNAKE_SQ)*COLORS['food'])[:,0,0]
+
+    #Upscale 
+    base_vector             = torch.clone(template_vector)
+    base_vector             = torch.nn.functional.interpolate(base_vector.unsqueeze(0),size=(img_h,img_w))[0]
+
+    #print(f"returning shapes: {base_vector.shape}\n {template_vector.shape}")
+    return base_vector,template_vector
+
+
 def step_snake(game_vector,snake_list,food_loc,arr_w,arr_h):
     #input(f"og vect: {game_vector.shape}")
     #reduce 1 dimension of history 
@@ -166,4 +226,4 @@ def reduce_arr(arr,newlen):
 
 
 if __name__ == "__main__":
-    pass
+    snake_list  = []

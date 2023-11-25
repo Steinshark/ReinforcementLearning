@@ -50,7 +50,8 @@ def plot_game(scores_list=[],steps_list=[],series_names="Empty",x_scales=[],grap
 
 ARCHITECTURES = {   "conv_sm"   : networks.SnakeConvNetSm,
                     "conv_md"   : networks.SnakeConvNetMd,
-                    "conv_lg"   : networks.SnakeConvNetLg
+                    "conv_lg"   : networks.SnakeConvNetLg,
+                    "adaptive"  : networks.SnakeAdaptNet
 }
 
 LOSSES      = { "MSE"       : torch.nn.MSELoss,
@@ -72,27 +73,27 @@ ACTIVATIONS = { "ReLU"      : torch.nn.functional.relu,
 
 DEFAULTS    = { "gameX"     : 20,
                 "gameY"     : 20,
-                "iters"     : 100*1000,
-                "te"        : 1,
+                "img_dim"   : (40, 40),
+                "iters"     : 32768,
+                "te"        : 8,
                 "ps"        : 16384,
-                "ss"        : 1024,
-                "bs"        : 16,
-                "lr"        : .0002,
+                "ss"        : 2048,
+                "bs"        : 128,
                 "hs"        : 3,
-                "kw"        : "{'weight_decay':0}",
+                "kw"        : "{'weight_decay':.00001,'lr':.0001}",
                 "upd"        : False,
                 "ep"        : 1,
                 "mt"        : .05,
-                "mx"        : 20*20,
+                "mx"        : 400,
                 "arch"      : "",
                 "lo"        : "",
                 "op"        : "",
                 "ac"        : "",
-                "tr"        : 4,
-                "gam"       : .99,
+                "tr"        : 8,
+                "gam"       : .9,
                 "gpu"       : False,
-                "rew"       : "{'die':-1,'eat':1,'step':0}",
-                "rpick"     : .25,
+                "rew"       : "{'die':-19,'eat':75,'step':-2}",
+                "rpick"     : 0,
                 "run_name"  : "run1"
                 }
 
