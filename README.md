@@ -16,15 +16,14 @@ this is not an exhaustive list, just some that I remember...
 - pygame 
 - pytorch (Cuda not necessary, but speeds up alot. also some code may have hard coded in ".cuda()" (sorry!)
 - matplotlib
-- numpy
-- pygame 
+- numpy 
 
 
 Algorithm at a 10_000ft view: 
 
 - play snake games balancing exploration (random moves) and exploitation (current models best guess) 
 - record all board states (a 3 channel image), move choices, outcomes (+reward if move led immediately to eating the food, -reward if death, either 0 or slight -reward for plain step) 
-- after playing 'train_every' games, take the detached of experiences, add it to a pool, sample randomly from it, and training the NN to accurately predict the reward via the Bellman Eqn. 
+- after playing 'train_every' games, take the set of experiences, add it to a pool, sample randomly from it, and training the NN to accurately predict the reward via the Bellman Eqn. 
 - tweak and run at your pleasure!
 
 enjoy!    
