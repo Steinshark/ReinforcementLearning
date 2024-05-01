@@ -1,10 +1,11 @@
 import tkinter as tk 
 from tkinter        import ttk, DoubleVar, Canvas, BooleanVar, Scale
-from tkinter        import Button, Entry, Frame, Label,StringVar
-from tkinter.ttk    import Checkbutton
+from tkinter        import Frame, StringVar
+from tkinter.ttk    import Checkbutton, Button,Entry, Label
 from tkinter.scrolledtext import ScrolledText
 from tkinter.ttk    import Combobox, Progressbar
 from PIL            import Image,ImageTk
+from ttkthemes import ThemedTk
 import os 
 if "win" in os.name:
     from ctypes     import windll
@@ -26,11 +27,13 @@ import torch
 
 class TrainerApp:
 
+
     def __init__(self,width,height):
         self.best_game = [] 
         self.best_score = 0
+
         #Build window 
-        self.window         = tk.Tk()
+        self.window         = ThemedTk(theme='adapta')
         self.window.title("Yung Charles")
         self.window         .geometry(str(width)+ "x" +str(height))
         self.window.resizable()
@@ -264,7 +267,7 @@ class TrainerApp:
         self.telemetry_frame.columnconfigure(0,weight=1)
         self.telemetry_frame.rowconfigure(0,weight=1)
         self.telemetry_frame.rowconfigure(1,weight=1)
-        self.telemetry_frame_title  = Label(self.control_frame,text="TELEMETRY",height=self.train_button.winfo_height()+1)
+        self.telemetry_frame_title  = Label(self.control_frame,text="TELEMETRY")#,height=self.train_button.winfo_height()+1)
         self.telemetry_frame_title.grid(row=i+3,column=0,sticky=tk.EW,pady=0)
 
         self.telemetry_box      = ScrolledText(self.telemetry_frame,width=self.run_frame.winfo_width(),height=8)
@@ -374,7 +377,7 @@ class TrainerApp:
         self.terminal_frame.columnconfigure(0,weight=1)
         self.terminal_frame.rowconfigure(0,weight=1)
         self.terminal_frame.rowconfigure(1,weight=1)
-        self.terminal_frame_title  = Label(self.control_frame,text="TELEMETRY",height=self.train_button.winfo_height()+1)
+        self.terminal_frame_title  = Label(self.control_frame,text="TELEMETRY")#,height=self.train_button.winfo_height()+1)
         self.telemetry_frame_title.grid(row=i+9,column=0,sticky=tk.EW,pady=0)
 
         self.terminal_box      = ScrolledText(self.terminal_frame,width=self.run_frame.winfo_width(),height=8)
@@ -401,11 +404,14 @@ class TrainerApp:
 
         self.varlist                    = {}
         self.commands                   = {}
+        self.graphing                   = {}
     
+
     def run_loop(self):
         self.window.after(100,self.update)
         self.window.mainloop()
         print("exit window mainloop")
+
 
     def set_vars(self):
 
@@ -432,6 +438,7 @@ class TrainerApp:
                 pass
             else:
                 self.settings[s_key] = float(eval(self.fields[s_key].get()))
+
 
     def run_training(self):
         self.set_vars()
@@ -495,10 +502,12 @@ class TrainerApp:
         self.telemetry_box.insert(tk.END,"Starting train thread\n")
         self.train_thread.start()
 
+
     def update_graph_list(self,name):
         print(f"updating run {name}")
         self.graphing[name]     = self.graphing[name] * -1
         self.showupdate()
+
 
     def cancel_training(self):
         self.var_step.set("0")
@@ -521,9 +530,11 @@ class TrainerApp:
             print(f"error joining thread")
             print(AE)
 
+
     def set_game_plots(self):
         self.game_runs[self.current_game_name]["steps"]     = copy.deepcopy(self.cur_game_steps)
         self.game_runs[self.current_game_name]["scores"]    = copy.deepcopy(self.cur_game_scores)    
+
 
     def place_steps(self,update_display=True):
         self.step_canvas.update()
@@ -543,6 +554,7 @@ class TrainerApp:
 
         self.telemetry_box.yview(tk.END)
     
+
     def place_scores(self,update_display=True): 
         self.score_canvas.update()
         self.step_telemetry.update()
@@ -559,6 +571,7 @@ class TrainerApp:
             self.score_img = ImageTk.PhotoImage(Image.open("scores.png"))
             self.score_canvas.create_image(self.score_canvas.winfo_width()/2,self.score_canvas.winfo_height()/2,image=self.score_img)
 
+
     def play_game(self):
         self.FPS = self.fps_slide.get()
         self.set_vars()
@@ -573,6 +586,7 @@ class TrainerApp:
             while time.time() - t0 < (1/self.FPS):
                 time.time()
 
+
     def play_best(self):
 
         self.FPS = self.fps_slide.get()
@@ -582,44 +596,47 @@ class TrainerApp:
         for frame in game:
             t0 = time.time()
             self.place_frame(frame)
-            while time.time() - t0 < (1/self.FPS):
-                time.time()
+            frame_wait  = (t0 + 1/self.FPS) - time.time()
+            time.sleep(frame_wait)
+
 
     def place_game_img(self,game):
+
+        #Define rgb colors 
         green   = (25,245,167)
         red     = (234,45,63)
 
-        t0 = time.time()
+        #Get/calc in-game settings
         game_x,game_y   = int(self.settings['gameX']),int(self.settings['gameY'])
-        
         square_w        = int(self.IMG_W / game_x)
         square_h        = int(self.IMG_H / game_y)
         
-        temp_im = Image.new("RGB",(self.IMG_W,self.IMG_H))
-        pixs                            = temp_im.load()
+        #Prep a frame img
+        temp_im         = Image.new("RGB",(self.IMG_W,self.IMG_H))
+        pixs            = temp_im.load()
 
         #Create blank img 
         for pack in [(x,y) for x in range(self.IMG_W) for y in range(self.IMG_H)]:
-            i,j = pack
-            pixs[i,j] = (0,0,0)
+            i,j         = pack
+            pixs[i,j]   = (0,0,0)
         
         #Fill in segments 
         for segment in game['snake']:
-            min_x = int(segment[0]*square_w)
-            min_y = int(segment[1]*square_h)
+            min_x       = int(segment[0]*square_w)
+            min_y       = int(segment[1]*square_h)
 
-            max_x = min_x + square_w
-            max_y = min_y + square_h
+            max_x       = min_x + square_w
+            max_y       = min_y + square_h
 
             for x_i in range(min_x,max_x):
                 for y_i in range(min_y,max_y):
                     pixs[x_i,y_i] = green 
-            
-        min_x   = int(game['food'][0]*square_w)
-        min_y   = int(game['food'][1]*square_h)
-
-        max_x   = min_x + square_w
-        max_y   = min_y + square_h 
+        
+        #Fill bottom corner to top corner of food
+        min_x           = int(game['food'][0]*square_w)
+        max_x           = min_x + square_w
+        min_y           = int(game['food'][1]*square_h)
+        max_y           = min_y + square_h 
 
         for x_i in range(min_x,max_x):
                 for y_i in range(min_y,max_y):
@@ -629,12 +646,12 @@ class TrainerApp:
         self.game_image = temp_im
         self.show_image = ImageTk.PhotoImage(self.game_image)
         self.view_frame.update()
-        self.top_x = self.game_canvas.winfo_width()/2 
-        self.top_y = self.game_canvas.winfo_height()/2
+        self.top_x      = self.game_canvas.winfo_width()/2 
+        self.top_y      = self.game_canvas.winfo_height()/2
 
         self.game_canvas.create_image(self.top_x,self.top_y,image=self.show_image)
         self.game_canvas.update()
-        print(f"frametime is {(time.time()-t0):.2f}s")
+
 
     def place_game_img2(self,game):
         
@@ -681,6 +698,7 @@ class TrainerApp:
         self.game_canvas.create_image(self.top_x,self.top_y,image=self.show_image)
         self.game_canvas.update()
 
+
     def place_frame(self,game):
         snake_tracker   = game['snake']
         food_tracker    = game['food']
@@ -694,23 +712,25 @@ class TrainerApp:
 
         self.game_canvas.create_image(self.top_x,self.top_y,image=self.frame)
         self.game_canvas.update()
+        
+
     def place_variations(self):
-        
-        names   = [name for name in self.graphing.keys() if self.varlist[name]]
-        
+
+        names   = []
+        for gamename,variable in self.varlist.items():
+            print(f"key {gamename} -> {variable.get()}")
+            if variable.get():
+                names.append(gamename)
+        print(f"requesting {names}")
         colors  = ['cyan',"dodgerblue","goldenrod","mediumturquoise","limegreen","red","brown","black"]
         random.shuffle(colors)
+
         #Place all series onto steps chart
         plt.rcParams["figure.figsize"] = (self.score_canvas.winfo_width()/self.window.winfo_fpixels('1i'),self.score_canvas.winfo_height()/self.window.winfo_fpixels('1i'))
 
-        #Find all relative lengths
-        max_steps       = max([len(step['steps']) for step in self.game_runs.values()])
-        longest         = min(100,max_steps)
-        adjusted_len    = [int(longest*len(step['steps'])/max_steps) for step in self.game_runs.values()]
-
         i = 0 
-        for name,length in zip(names,adjusted_len):
-            plt.plot(utilities.reduce_arr(self.game_runs[name]['steps'],length),color=colors[i],label=name)
+        for name in names:
+            plt.plot(self.game_runs[name]['steps'],color=colors[i],label=name)
             i += 1
         
         plt.legend()
@@ -738,11 +758,12 @@ class TrainerApp:
         self.score_img = ImageTk.PhotoImage(Image.open("scores.png"))
         self.score_canvas.create_image(self.score_canvas.winfo_width()/2,self.score_canvas.winfo_height()/2,image=self.score_img)
 
+
     def showupdate(self):
         for var in self.varlist:
             print(f"var {var} is val {self.varlist[var].get()}")
-        print(f"graphing: {self.graphing}")
     
+
     def graph_runs(self):
         self.popup       = tk.Toplevel()
         self.popup.rowconfigure(0)
@@ -774,6 +795,7 @@ class TrainerApp:
 
 
         self.popup.mainloop()
+
 
     def update(self):
         self.lock                   = True 

@@ -41,13 +41,6 @@ def plot_game(scores_list=[],steps_list=[],series_names="Empty",x_scales=[],grap
     fig.savefig(name)
     print(f"saved to {name}")
 
-
-# ARCHITECTURES = {"FCN_1"    : {"type":"FCN","arch":[3,1024,128,4]},
-#                  "CNN_1"    : {"type":"CNN","arch":[[3,16,7],[16,8,3],[6400,512],[512,4]]},
-#                  "CNN_2"    : {"type":"CNN","arch":[[3,16,9],[16,32,3],[12800,1024],[1024,4]]},
-#                  "CNN_3"    : {"type":"CNmedN","arch":[[3,8,11],[8,8,3],[6400,1024],[1024,4]]},
-#                  "CNN_4"    : {"type":"CNN","arch":[[3,32,3],[32,64,3],[128,64],[64,4]]}}
-
 ARCHITECTURES = {   "conv_sm"   : networks.SnakeConvNetSm,
                     "conv_md"   : networks.SnakeConvNetMd,
                     "conv_lg"   : networks.SnakeConvNetLg,
@@ -69,30 +62,31 @@ ACTIVATIONS = { "ReLU"      : torch.nn.functional.relu,
                 "Sigmoid"   : torch.nn.functional.sigmoid,
                 "Tanh"      : torch.nn.functional.tanh,
                 "CELU"      : torch.nn.functional.celu,
+                "PReLU"      : torch.nn.functional.prelu,
                 "ELU"       : torch.nn.functional.elu}
 
-DEFAULTS    = { "gameX"     : 20,
-                "gameY"     : 20,
+DEFAULTS    = { "gameX"     : 10,
+                "gameY"     : 10,
                 "img_dim"   : (40, 40),
-                "iters"     : 32768,
-                "te"        : 8,
-                "ps"        : 16384,
-                "ss"        : 2048,
-                "bs"        : 128,
+                "iters"     : 16384,
+                "te"        : 32,
+                "ps"        : 8192,
+                "ss"        : 1024,
+                "bs"        : 16,
                 "hs"        : 3,
-                "kw"        : "{'weight_decay':.00001,'lr':.0001}",
+                "kw"        : "{'weight_decay':0,'lr':.0002}",
                 "upd"        : False,
                 "ep"        : 1,
                 "mt"        : .05,
-                "mx"        : 400,
+                "mx"        : 100,
                 "arch"      : "",
                 "lo"        : "",
                 "op"        : "",
                 "ac"        : "",
-                "tr"        : 8,
+                "tr"        : 4,
                 "gam"       : .9,
                 "gpu"       : False,
-                "rew"       : "{'die':-19,'eat':75,'step':-2}",
+                "rew"       : "{'die':-35,'eat':75,'step':-2}",
                 "rpick"     : 0,
                 "run_name"  : "run1"
                 }
