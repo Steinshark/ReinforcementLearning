@@ -68,7 +68,7 @@ class Trainer:
         self.save_fig 			= save_fig_now
 
         #Set model vars  
-        self.input_dim 			= input_dim
+        self.input_dim 			= [3,img_dim[0],img_dim[1]]
         self.progress_var 		= progress_var
         self.movement_repr_tuples = [(0,-1),(0,1),(-1,0),(1,0)]
         self.loss_fn 			= loss_fn
@@ -100,15 +100,15 @@ class Trainer:
 
         #Enable cuda acceleration if specified 
         self.device 			= torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
+        self.train_dtype        = torch.bfloat16
 
 
 
         #Generate models for the learner agent 
         self.model_class 		= model_class
 
-        self.learning_model 	= self.model_class(self.input_dim,self.loss_fn,self.activation)
-        self.target_model		= self.model_class(self.input_dim,self.loss_fn,self.activation)
+        self.learning_model 	= self.model_class(self.input_dim,self.loss_fn,self.activation).type(self.train_dtype)
+        self.target_model		= self.model_class(self.input_dim,self.loss_fn,self.activation).type(self.train_dtype)
         self.optimizer  		= optimizer_fn(self.learning_model.parameters(),**optimizer_kwargs)
         print(f"Training with arch:\n{self.learning_model}")
     
@@ -118,6 +118,7 @@ class Trainer:
             self.output.insert(tk.END,f"\tTraing with {self.device}\n")
 
 
+        
 
         #print(self.learning_model)
         #REMOVE 
@@ -129,7 +130,7 @@ class Trainer:
         #	Instead of copying a new memory_pool list 
         #	upon overflow, simply replace the next window each time 
 
-        print(f"\tStart training with {self.optimizer}")
+        print(f"\t{Color.green}Start training with {self.optimizer}\n\tRandom={random_pick}({drop_rate})")
         memory_pool 	= []
         window_i 		= 0
         stop_thresh  	= False 
@@ -152,7 +153,7 @@ class Trainer:
 
             #	GET EXPERIENCES
             self.learning_model.eval()
-            metrics, experiences, new_games = SnakeConcurrentIMG.Snake(self.w,self.h,self.learning_model,simul_games=train_every,device=self.device,rewards=rewards,max_steps=max_steps,img_repr_size=self.img_dim).play_out_games(epsilon=e)
+            metrics, experiences, new_games = SnakeConcurrentIMG.Snake(self.w,self.h,self.learning_model,simul_games=train_every,device=self.device,rewards=rewards,max_steps=max_steps,img_dims=self.img_dim).play_out_games(epsilon=e,train_dtype=self.train_dtype)
             self.learning_model.train()
 
             print(f"\t{Color.tan}Generated {len(experiences)} game experiences{Color.end}\t")
@@ -199,8 +200,8 @@ class Trainer:
 
             #	UPDATE GUI
             if self.gui:
-                self.parent_instance.var_step.set(f"{(sum(self.all_lived[-100:])/100):.2f}")
-                self.parent_instance.var_score.set(f"{(sum(self.all_scores[-100:])/100):.2f}")
+                self.parent_instance.var_step.set(f"{(sum(self.all_lived[-100:])/100):.1f}")
+                self.parent_instance.var_score.set(f"{(sum(self.all_scores[-100:])/100):.1f}")
                 self.parent_instance.var_error.set(f"{sum(self.errors)/len(self.errors):.2f}")
             
     
@@ -240,8 +241,9 @@ class Trainer:
 
                 if verbose:# or True:
                     print(f"\t{Color.blue}[Quality\t{perc_str}  -  R_PICK: {'off' if not random_pick else 'on'}\t\t\t\t\t\t]\n{Color.end}")
+                print(f"\t\t{Color.green}Training on {len(training_set)} samples{Color.end}\n")
                 self.train_on_experiences(training_set,epochs=epochs,batch_size=batch_size,early_stopping=False,verbose=verbose)
-
+                print(f"\t\t{Color.green}Model trained to {self.error:.3f}{Color.end}\n")
                 if self.gui and self.parent_instance.cancel_var:
                     self.output.insert(tk.END,f"CANCELLING\n")
                     return 
@@ -284,13 +286,18 @@ class Trainer:
 
     def train_on_experiences(self,big_set,epochs=1,batch_size=8,early_stopping=True,verbose=False):
         
-        num_batches = int(len(big_set) / batch_size)
 
-        #Telemetry 
+        #Set proper model state 
+        self.learning_model.train().type(self.train_dtype)
+        self.target_model.eval().type(self.train_dtype)
+
+        #Display update 
         if verbose:
             print(f"\t{Color.tan}TRAINING:")
             print(f"\t\tDataset:\n\t\t{'loss-fn'.ljust(12)}: {str(self.learning_model.loss_fn).split('(')[0]}\n\t\t{'optimizer'.ljust(12)}: {str(self.optimizer).split('(')[0]}\n\t\t{'size'.ljust(12)}: {len(big_set)}\n\t\t{'lr'.ljust(12)}: {self.optimizer.param_groups[0]['lr']:.8f}\n\t\t{'batches'.ljust(12)}: {num_batches}")
             print(f"{Color.end}",end='')
+
+        num_batches = int(len(big_set) / batch_size)
         for epoch_i in range(epochs):
             
             if self.gui and self.parent_instance.cancel_var:
@@ -331,9 +338,9 @@ class Trainer:
 
                 #Gather batch experiences
                 batch_set 							= big_set[i_start:i_end]
-                init_states 						= torch.stack([exp['s']  for exp in batch_set]).type(torch.float32)
+                init_states 						= torch.stack([exp['s']  for exp in batch_set]).type(self.train_dtype)
                 action 								= [exp['a'] for exp in batch_set]
-                next_states							= torch.stack([exp['s`'] for exp in batch_set]).type(torch.float32)
+                next_states							= torch.stack([exp['s`'] for exp in batch_set]).type(self.train_dtype)
                 rewards 							= [exp['r']  for exp in batch_set]
                 done								= [exp['done'] for exp in batch_set]
                 
@@ -351,10 +358,8 @@ class Trainer:
                 for i,val in enumerate(best_predictions):
                     chosen_action						= action[i]
                     final_target_values[i,chosen_action]= rewards[i] + (done[i] * self.gamma * val)
-                    if rewards[i] > .5 and random.random() < .01 and False:
-                        print(f"maxs {best_predictions}")
-                        print(f"\nfor init val:{initial_target_predictions[i].cpu().detach().numpy()} + a:{chosen_action} - > update to {rewards[i]:.3f} + {self.gamma:.3f}*{val:.3f}*[done:{done[i]:.3f}] = {rewards[i] + (done[i] * self.gamma * val):.3f}")
-                        print(f"training with {final_target_values[i].cpu().detach().numpy()}\n\n")
+                    final_target_values[i,chosen_action].type(self.train_dtype)
+
                 #	Calculate Loss
                 t1 							= time.time()
                 batch_loss 					= self.learning_model.loss_fn(initial_target_predictions,final_target_values)
@@ -376,21 +381,11 @@ class Trainer:
 
 
     def transfer_models(self,verbose=False,optimize=False):
-        #self.output.insert(tk.END,f"\tTransferring Model\n")
-        if verbose and False:
-            print("\ntransferring models\n\n")
 
-        #Save the models
-        if not os.path.isdir(self.PATH):
-            os.mkdir(self.PATH)
-        torch.save(self.learning_model.state_dict(),os.path.join(self.PATH,f"{self.fname}_lm_state_dict"))
-        
-        #Load the learning model as the target model
-        self.target_model		= self.model_class(self.input_dim,self.loss_fn,self.activation)
-        self.target_model.load_state_dict(torch.load(os.path.join(self.PATH,f"{self.fname}_lm_state_dict")))
-        self.target_model.to(self.device)
-
-        self.target_model.eval()
+        #Transfer state_dict and ensure on proper device, mode, etc...
+        prev_state_dict         = self.learning_model.state_dict()
+        self.target_model.load_state_dict(prev_state_dict)
+        self.target_model.to(self.device).type(self.train_dtype).eval()
 
 
     def load_prev_models(self):
@@ -401,10 +396,11 @@ class Trainer:
         self.target_model.to(self.device)
         self.learning_model.to(self.device)
 
+
     @staticmethod
     def update_epsilon(percent):
         radical = -.04299573*100*percent -1.2116290 
-        if percent > .50:
+        if percent > .750:
             return 0
         else:
             return pow(2.7182,radical)
@@ -439,4 +435,7 @@ if __name__ == "__main__":
                                 gui=False
                                 )
     
+    plt.plot([t.update_epsilon(i/100) for i in range(100)])
+    plt.show()
+    exit()
     t.train_concurrent(verbose=True,iters=32768,train_every=512,pool_size=16384,sample_size=8192,batch_size=16)

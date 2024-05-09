@@ -14,6 +14,7 @@ from matplotlib import pyplot as plt
 import utilities
 import torchvision.utils as vutils
 import networks 
+
 #This class interfaces only with NP 
 class Snake:
 

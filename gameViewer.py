@@ -1,6 +1,6 @@
 import tkinter as tk 
 from tkinter        import ttk, DoubleVar, Canvas, BooleanVar, Scale
-from tkinter        import Frame, StringVar
+from tkinter        import StringVar,Frame
 from tkinter.ttk    import Checkbutton, Button,Entry, Label
 from tkinter.scrolledtext import ScrolledText
 from tkinter.ttk    import Combobox, Progressbar
@@ -23,7 +23,8 @@ import time
 import utilities
 import torchvision 
 import torch
-
+from PIL import ImageTK
+import PIL 
 
 class TrainerApp:
 
@@ -33,38 +34,31 @@ class TrainerApp:
         self.best_score = 0
 
         #Build window 
-        self.window         = ThemedTk(theme='adapta')
-        self.window.title("Yung Charles")
+        self.window         = ThemedTk(theme='adapta',background='blue')
+        self.window.title("Ai Tester")
         self.window         .geometry(str(width)+ "x" +str(height))
         self.window.resizable()
-        self.window.columnconfigure(0,weight=1)
-        self.window.columnconfigure(1,weight=7)
-
         self.window.rowconfigure(0,weight=1)
-        self.window.rowconfigure(1,weight=16)
+        self.window.columnconfigure(0,weight=5)
+        self.window.columnconfigure(1,weight=25)
         self.window.grid()
 
         #Build general frames
-        self.top_frame      = tk.Frame(self.window)
-        self.control_frame  = tk.Frame(self.window)
-        self.view_frame     = tk.Frame(self.window)
+        self.control_frame  = Frame(self.window)
+        self.view_frame     = Frame(self.window)
         
         #Assemble General Frames
         self.control_frame.columnconfigure(0,weight=1)
 
-        self.top_frame.grid(row=0,column=0,columnspan=2,sticky=tk.NSEW)
-        self.control_frame.grid(row=1,column=0,sticky=tk.NSEW)
+        self.control_frame.grid(row=0,column=0,sticky=tk.NS)
 
-        self.view_frame.grid(row=1,column=1,sticky=tk.NSEW)
-        self.view_frame.rowconfigure(0,weight=4)
-        self.view_frame.rowconfigure(1,weight=5)
-        self.view_frame.columnconfigure(0,weight=2)
-        self.view_frame.columnconfigure(1,weight=1)
-        self.view_frame.columnconfigure(2,weight=2)
+        self.view_frame.rowconfigure(0,weight=3)
+        self.view_frame.rowconfigure(1,weight=3)
+        self.view_frame.rowconfigure(2,weight=5)
+        self.view_frame.columnconfigure(0,weight=1)
+        self.view_frame.grid(row=0,column=1,sticky=tk.NSEW)
 
-        self.top_frame.configure(background="#545C6A")
-        self.control_frame.configure(background="#545C6A")
-        self.view_frame.configure(background="#545C6A")
+
 
         
         #Keep track of settings
@@ -79,7 +73,6 @@ class TrainerApp:
                             "bs"            : None,
                             "run_name"      : None,
                             "kw"            : None,
-                            "upd"            : None,
                             "ep"            : None,
                             "mx"            : None,
                             "lo"            : None,
@@ -95,27 +88,26 @@ class TrainerApp:
 
         self.setting_frames = {
 
-                        "game_dim" : Frame(self.control_frame,padx=1,pady=1),
-                        "samp"    : Frame(self.control_frame,padx=1,pady=1),
-                        "img_dim" : Frame(self.control_frame,padx=1,pady=1),
-                        "iters" : Frame(self.control_frame,padx=1,pady=1),
-                        "te"    : Frame(self.control_frame,padx=1,pady=1),
-                        #"ss"    : Frame(self.control_frame,padx=1,pady=1),
-                        "bs"    : Frame(self.control_frame,padx=1,pady=1),
-                        "run_name"    : Frame(self.control_frame,padx=1,pady=1),
-                        "kw"    : Frame(self.control_frame,padx=1,pady=1),
-                        "upd"    : Frame(self.control_frame,padx=1,pady=1),
-                        "ep"    : Frame(self.control_frame,padx=1,pady=1),
-                        "mx"    : Frame(self.control_frame,padx=1,pady=1),
-                        "model"  : Frame(self.control_frame,padx=1,pady=1),
-                        "lo"    : Frame(self.control_frame,padx=1,pady=1),
-                        "op"    : Frame(self.control_frame,padx=1,pady=1),
-                        "ac"    : Frame(self.control_frame,padx=1,pady=1),
-                        "tr"    : Frame(self.control_frame,padx=1,pady=1),
-                        "gam"   : Frame(self.control_frame,padx=1,pady=1),
-                        "rew"   : Frame(self.control_frame,padx=1,pady=1),
-                        "rpick" : Frame(self.control_frame,padx=1,pady=1),
-                        "graph" : Frame(self.control_frame,padx=1,pady=1)
+                        "game_dim" : Frame(self.control_frame),
+                        "samp"    : Frame(self.control_frame),
+                        "img_dim" : Frame(self.control_frame),
+                        "iters" : Frame(self.control_frame),
+                        "te"    : Frame(self.control_frame),
+                        #"ss"    : Frame(self.control_frame),
+                        "bs"    : Frame(self.control_frame),
+                        "run_name"    : Frame(self.control_frame),
+                        "kw"    : Frame(self.control_frame),
+                        "ep"    : Frame(self.control_frame),
+                        "mx"    : Frame(self.control_frame),
+                        "model"  : Frame(self.control_frame),
+                        "lo"    : Frame(self.control_frame),
+                        "op"    : Frame(self.control_frame),
+                        "ac"    : Frame(self.control_frame),
+                        "tr"    : Frame(self.control_frame),
+                        "gam"   : Frame(self.control_frame),
+                        "rew"   : Frame(self.control_frame),
+                        "rpick" : Frame(self.control_frame),
+                        "graph" : Frame(self.control_frame)
         }
         
         for sf in self.setting_frames:
@@ -149,9 +141,7 @@ class TrainerApp:
                                 "run_name"        :   Label( self.setting_frames["run_name"],
                                                     text="Train Run Name"),
                                 "kw"        :   Label( self.setting_frames['kw'],
-                                                    text="optimizer kwargs"),
-                                "upd"        :   Label( self.setting_frames["upd"],
-                                                    text="update display"),
+                                                    text="optim kwargs"),
                                 "ep"        :   Label( self.setting_frames["ep"],
                                                     text="Epochs"),
                                 "mx"        :   Label( self.setting_frames["mx"],
@@ -187,8 +177,7 @@ class TrainerApp:
         optim_options   = list(OPTIMIZERS.keys())
         acti_options    = list(ACTIVATIONS.keys())
 
-        self.update_var = tk.IntVar()
-        entry_w = 10
+        entry_w = 8
         self.fields     = {     "gameX"     :   Entry(self.setting_frames["game_dim"],width=entry_w),
                                 "gameY"     :   Entry(self.setting_frames["game_dim"],width=entry_w),
                                 "img_dim"   :   Entry(self.setting_frames["img_dim"],width=entry_w),
@@ -198,8 +187,7 @@ class TrainerApp:
                                 "te"        :   Entry(self.setting_frames["te"],width=entry_w),
                                 "bs"        :   Entry(self.setting_frames["bs"],width=entry_w),
                                 "run_name"  :   Entry(self.setting_frames["run_name"],width=entry_w),
-                                "kw"        :   Entry(self.setting_frames["kw"],width=entry_w+30),
-                                "upd"        :   Checkbutton(self.setting_frames['upd'],variable=self.update_var,onvalue=1,offvalue=0),
+                                "kw"        :   Entry(self.setting_frames["kw"],width=entry_w+10),
                                 "ep"        :   Entry(self.setting_frames["ep"],width=entry_w),
                                 "mx"        :   Entry(self.setting_frames["mx"],width=entry_w),
                                 "model"      :   Combobox(self.setting_frames["model"],width=entry_w+2,textvariable=self.settings['model'],state="readonly"),
@@ -262,6 +250,8 @@ class TrainerApp:
         self.train_button.grid(row=0,column=1,sticky=tk.NSEW)
         self.run_frame.grid(row=i+1,column=0,sticky=tk.NSEW)
         
+
+    
         #Telemetry items
         self.telemetry_frame        = Frame(self.control_frame)
         self.telemetry_frame.columnconfigure(0,weight=1)
@@ -270,7 +260,7 @@ class TrainerApp:
         self.telemetry_frame_title  = Label(self.control_frame,text="TELEMETRY")#,height=self.train_button.winfo_height()+1)
         self.telemetry_frame_title.grid(row=i+3,column=0,sticky=tk.EW,pady=0)
 
-        self.telemetry_box      = ScrolledText(self.telemetry_frame,width=self.run_frame.winfo_width(),height=8)
+        self.telemetry_box      = ScrolledText(self.telemetry_frame,width=self.run_frame.winfo_width(),height=4)
         self.telemetry_box.grid(row=0,column=0,sticky=tk.EW)
         self.telemetry_frame.grid(row=i+4,column=0,sticky=tk.EW)
         
@@ -302,14 +292,14 @@ class TrainerApp:
         self.var_step.set("0")
         self.var_score.set("0") 
         self.var_error.set("0") 
-        self.games_num_label    = Label(self.stats_frame,text="Game Num:",width=8)
+        self.games_num_label    = Label(self.stats_frame,text="Game#:",width=4)
         self.games_output       = Entry(self.stats_frame,state="readonly",width=6,textvariable=self.var_game)
         self.steps_avg_label    = Label(self.stats_frame,text="Steps:",width=5)
         self.steps_output       = Entry(self.stats_frame,state="readonly",width=4,textvariable=self.var_step)
-        self.scored_avg_label   = Label(self.stats_frame,text="Score:",width=5)
+        self.scored_avg_label   = Label(self.stats_frame,text="Score:",width=4)
         self.scored_output      = Entry(self.stats_frame,state="readonly",width=4,textvariable=self.var_score)
-        self.error_avg_label    = Label(self.stats_frame,text="Error:",width=5)
-        self.error_output       = Entry(self.stats_frame,state="readonly",width=8,textvariable=self.var_error)
+        self.error_avg_label    = Label(self.stats_frame,text="Error:",width=4)
+        self.error_output       = Entry(self.stats_frame,state="readonly",width=6,textvariable=self.var_error)
 
         self.games_num_label.grid(row=0,column=0)
         self.games_output.grid(row=0,column=1)
@@ -349,53 +339,50 @@ class TrainerApp:
         self.fps_slide.set(32)
         self.fps_slide.grid(row=i+8,column=0,sticky=tk.NSEW)
         
+
+
+
         #Graph Items 
-        self.step_telemetry                         = Frame(self.view_frame,background='gray')
-        self.score_telemetry                        = Frame(self.view_frame,background='gray')
-        for tel in [self.step_telemetry,self.score_telemetry]:
-            tel.rowconfigure(0,weight=2)
-            tel.rowconfigure(1,weight=10)
-            tel.rowconfigure(2,weight=1)
-            tel.columnconfigure(0,weight=1)
-        
-        self.step_telemetry.grid(row=0,column=0,padx=0,pady=0,sticky=tk.NSEW)
-        self.score_telemetry.grid(row=0,column=2,padx=0,pady=0,sticky=tk.NSEW)
-        #Graph Titles
-        self.step_title                             = Label(self.step_telemetry,background='white',text="Step Telemetry",font=("Arial",10))
-        self.score_title                            = Label(self.score_telemetry,background='white',text="Score Telemetry",font=("Ariel",10))
-        self.step_canvas                            = Canvas(self.step_telemetry,background='black')
-        self.score_canvas                           = Canvas(self.score_telemetry,background='black')
-        
-        self.step_title.grid(row=0,column=0,sticky=tk.NSEW)
+        #STEPS GRAPHING 
+        self.steps_display                          = Frame(self.view_frame,background='yellow')
+        self.steps_display.grid(row=0,column=0,sticky=tk.NSEW)
+        self.steps_display.columnconfigure(0,weight=1)
+
+        self.steps_title                            = Label(self.steps_display,background='green',text='Average Steps/Game',anchor='center')
+        self.steps_display.rowconfigure(0,weight=1)
+        self.steps_title.grid(row=0,column=0,sticky=tk.NSEW)
+        self.steps_canvas                           = Canvas(self.steps_display)
+        self.steps_display.rowconfigure(1,weight=5)
+        self.steps_canvas.grid(row=1,column=0,sticky=tk.NSEW)
+
+
+
+        #SCORE GRAPHING 
+        self.score_display                          = Frame(self.view_frame,background='yellow')
+        self.score_display.grid(row=1,column=0,sticky=tk.NSEW)
+        self.score_display.columnconfigure(0,weight=1)
+
+        self.score_title                            = Label(self.score_display,background='green',text='Average Score/Game',anchor='center')
+        self.score_display.rowconfigure(0,weight=1)
         self.score_title.grid(row=0,column=0,sticky=tk.NSEW)
-        self.step_canvas.grid(row=1,column=0,sticky=tk.NSEW)
-        self.score_canvas.grid(row=1,column=0,sticky=tk.NSEW)   
+        self.score_canvas                           = Canvas(self.score_display)
+        self.score_display.rowconfigure(1,weight=5)
+        self.score_canvas.grid(row=1,column=0,sticky=tk.NSEW)
 
 
-        
-        self.terminal_frame        = Frame(self.control_frame)
-        self.terminal_frame.columnconfigure(0,weight=1)
-        self.terminal_frame.rowconfigure(0,weight=1)
-        self.terminal_frame.rowconfigure(1,weight=1)
-        self.terminal_frame_title  = Label(self.control_frame,text="TELEMETRY")#,height=self.train_button.winfo_height()+1)
-        self.telemetry_frame_title.grid(row=i+9,column=0,sticky=tk.EW,pady=0)
+        #GAME GRAPHING 
+        self.game_display                          = Frame(self.view_frame,background='blue')
+        self.game_display.grid(row=2,column=0,sticky=tk.NSEW)
+        self.game_display.columnconfigure(0,weight=1)
 
-        self.terminal_box      = ScrolledText(self.terminal_frame,width=self.run_frame.winfo_width(),height=8)
-        self.terminal_box.grid(row=0,column=0,sticky=tk.EW)
-        self.terminal_frame.grid(row=i+10,column=0,sticky=tk.EW)
-        self.command_history    = [] 
+        self.game_title                            = Label(self.game_display,background='green',text='Game Display',anchor='center')
+        self.game_display.rowconfigure(0,weight=1)
+        self.game_title.grid(row=0,column=0,sticky=tk.NSEW)
+        self.game_canvas                           = Canvas(self.game_display)
+        self.game_display.rowconfigure(1,weight=5)
+        self.game_canvas.grid(row=1,column=0,sticky=tk.NSEW)
 
         self.to_pil_img             = torchvision.transforms.ToPILImage()
-
-
-        print(f"score {self.score_canvas.winfo_width()},{self.score_canvas.winfo_height()}")
-
-        #Game View Items 
-        self.IMG_W                      = 550
-        self.IMG_H                      = 550
-        self.game_canvas                = Canvas(self.view_frame,background="gray",width=self.IMG_W,height=self.IMG_H)
-        self.game_canvas                .grid(row=1,column=0,sticky=tk.NSEW,columnspan=3)
-        self.game_image                 = None
 
 
         self.game_runs                  = {}
@@ -434,7 +421,7 @@ class TrainerApp:
                 self.game_runs[self.fields[s_key].get()]    = {"steps":[],"score":[],"n_games":0}
                 self.current_game_name                      = self.fields[s_key].get()
                 self.settings['run_name']                   = self.fields[s_key].get()
-            elif s_key in "upd" or s_key == "graph":
+            elif s_key == "graph":
                 pass
             else:
                 self.settings[s_key] = float(eval(self.fields[s_key].get()))
@@ -477,7 +464,6 @@ class TrainerApp:
                                 
                                 
                                 instance        = self,
-                                #lr_threshs      = self.settings["upd"],
                                 gui=True
                                 ) 
         
@@ -493,7 +479,7 @@ class TrainerApp:
                                                     "transfer_models_every":int(self.settings['tr']),
                                                     "rewards":self.settings['rew'],
                                                     "verbose":False,
-                                                    "random_pick":True,
+                                                    "random_pick":False,
                                                     "drop_rate":self.settings['rpick'],
                                                     "max_steps":self.settings['mx']
                                             },
@@ -537,20 +523,36 @@ class TrainerApp:
 
 
     def place_steps(self,update_display=True):
+        
+        #Setup plt img 
+        px_width                        = self.window.winfo_fpixels('1i')
+        figsize                         = (self.steps_canvas.winfo_width()/px_width,self.steps_canvas.winfo_height()/px_width)
+        fig                             = plt.figure(figsize=figsize)
+
+        #Plot the graph 
+        steps                           = utilities.reduce_arr(self.cur_game_steps,100)
+        fig.plot(steps,color='dodgerblue')
+        fig.get
+        PIL.Image.frombytes('RGB',fig.canvas.get_width_height(),fig.canvas.tostring_rgb())
+        self.image              = ImageTk.PhotoImage(self.pil_image)#data=scaled_bytes,format='png')
+
+        #Create x-offset to center square 
+        self.x_offset           = (self.canv_w - square_dim)  // 2 if self.canv_w > self.canv_h else 0
+        self.board_canvas.create_image(self.x_offset,0,image=self.image,anchor=tk.NW)
+
+
         self.step_canvas.update()
         self.step_telemetry.update()
         self.score_telemetry.update()
 
         steps       = copy.deepcopy(self.cur_game_steps)
         steps       = utilities.reduce_arr(steps,100)
-        if update_display:
-            plt.rcParams["figure.figsize"] = (self.step_canvas.winfo_width()/self.window.winfo_fpixels('1i'),self.step_canvas.winfo_height()/self.window.winfo_fpixels('1i'))
-            plt.plot(steps,color='goldenrod')
 
-            plt.savefig("steps.png")
-            plt.clf()
-            self.step_img = ImageTk.PhotoImage(Image.open("steps.png"))
-            self.step_canvas.create_image(self.step_canvas.winfo_width()/2,self.step_canvas.winfo_height()/2,image=self.step_img)
+
+        plt.savefig("steps.png")
+        plt.clf()
+        self.step_img = ImageTk.PhotoImage(Image.open("steps.png"))
+        self.step_canvas.create_image(self.step_canvas.winfo_width()/2,self.step_canvas.winfo_height()/2,image=self.step_img)
 
         self.telemetry_box.yview(tk.END)
     
@@ -596,7 +598,7 @@ class TrainerApp:
         for frame in game:
             t0 = time.time()
             self.place_frame(frame)
-            frame_wait  = (t0 + 1/self.FPS) - time.time()
+            frame_wait  = max((t0 + 1/self.FPS) - time.time(),.02)
             time.sleep(frame_wait)
 
 
@@ -722,8 +724,8 @@ class TrainerApp:
             if variable.get():
                 names.append(gamename)
         print(f"requesting {names}")
-        colors  = ['cyan',"dodgerblue","goldenrod","mediumturquoise","limegreen","red","brown","black"]
-        random.shuffle(colors)
+        colors  = ['cyan',"goldenrod","dodgerblue","mediumturquoise","limegreen","red","brown","black"]
+        #random.shuffle(colors)
 
         #Place all series onto steps chart
         plt.rcParams["figure.figsize"] = (self.score_canvas.winfo_width()/self.window.winfo_fpixels('1i'),self.score_canvas.winfo_height()/self.window.winfo_fpixels('1i'))
@@ -800,9 +802,8 @@ class TrainerApp:
     def update(self):
         self.lock                   = True 
         if self.training_epoch_finished:
-            if self.update_var.get():
-                self.place_steps()
-                self.place_scores()
+            self.place_steps()
+            self.place_scores()
             self.training_epoch_finished = False
 
         self.lock                   = False 
@@ -814,7 +815,7 @@ if __name__ == "__main__":
 
     #Create the root frame 
 
-    ta = TrainerApp(2000,1200)
+    ta = TrainerApp(800,950)
 
     ta.run_loop()
 

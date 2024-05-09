@@ -30,99 +30,58 @@ class SnakeNetwork (torch.nn.Module):
 
 class SnakeConvNetSm (SnakeNetwork):
 
+
 	def __init__(self,input_dim,loss_fn,activation_fn):
 
 		super(SnakeConvNetSm,self).__init__(input_dim,loss_fn,activation_fn)
 
 
-		#Create model 
-		self.conv1 			= torch.nn.Conv2d(input_dim[0],16,3,1,1).to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
-		self.conv2 			= torch.nn.Conv2d(16,64,5,1,1).to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
-		self.avgpool 		= torch.nn.AdaptiveAvgPool2d(4).to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
-		self.lin1 			= torch.nn.Linear(64*4*4,128).to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
-		self.lin2 			= torch.nn.Linear(128,4).to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
+		#Create model
+		self.layer1 		= torch.nn.Sequential(torch.nn.Conv2d(input_dim[0],64,5,1,2),torch.nn.BatchNorm2d(64))
+		self.layer2			= torch.nn.Sequential(torch.nn.Conv2d(64,64,5,1,2),torch.nn.BatchNorm2d(64))
+		self.layer3			= torch.nn.Sequential(torch.nn.Conv2d(64,64,(input_dim[1],input_dim[2]),1,0))
+		self.linear1		= torch.nn.Sequential(torch.nn.Flatten(start_dim=1),torch.nn.Linear(64,64))
+		self.output_layer	= torch.nn.Sequential(torch.nn.Linear(64,4))
 	
+
 	def forward(self,x:torch.Tensor) ->torch.Tensor:
 
-		x 					= self.activation_fn(self.conv1(x))
-		x 					= self.activation_fn(self.conv2(x))
-		#x 					= self.activation_fn(self.conv3(x))
-		x 					= self.avgpool(x)
-		x 					= x.view(x.shape[0],-1)
-		#print(f"x is shape {x.shape}")
-		x 					= self.activation_fn(self.lin1(x))
-		x 					= self.lin2(x)
-
-		return 				x 
+		x 					= self.activation_fn(self.layer1(x))
+		x 					= self.activation_fn(self.layer2(x))
+		x 					= self.activation_fn(self.layer3(x))
+		x 					= self.activation_fn(self.linear1(x))
+		return 				self.output_layer(x)
 
 
 class SnakeConvNetMd (SnakeNetwork):
 
 	def __init__(self,input_dim,loss_fn,activation_fn):
-		print(f"act is {activation_fn}")
-		for x,y in [(fun.relu,nn.ReLU),(fun.relu6,nn.ReLU6),(fun.leaky_relu,nn.LeakyReLU),(fun.gelu,nn.GELU),(fun.tanh,nn.Tanh),(fun.elu,nn.ELU),(fun.celu,nn.CELU)]:
-			if activation_fn is x: 
-				print(f"activation fun was {activation_fn}")
-				activation_fn = y
-				print(f"now is {activation_fn}")
 		super(SnakeConvNetMd,self).__init__(input_dim,loss_fn,activation_fn)
 
 
-		#Create model 
-		self.downsample_1 	= torch.nn.Sequential(
-			torch.nn.Conv2d(input_dim[0],16,3,1,1,bias=False),
-			torch.nn.BatchNorm2d(16),
-			activation_fn(),
-
-			torch.nn.Conv2d(16,16,3,2,1,bias=False),
-			torch.nn.BatchNorm2d(16),
-			activation_fn()
-		).to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))	# 20x20
-
-		self.downsample_2 	= torch.nn.Sequential(
-			torch.nn.Conv2d(16,32,3,1,1,bias=False),
-			torch.nn.BatchNorm2d(32),
-			activation_fn(),
-
-			torch.nn.Conv2d(32,32,3,2,1,bias=False),
-			torch.nn.BatchNorm2d(32),
-			activation_fn()
-		).to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))	# 10x10
-
-		self.downsample_3 	= torch.nn.Sequential(
-			torch.nn.Conv2d(32,64,3,1,1,bias=False),
-			torch.nn.BatchNorm2d(64),
-			activation_fn(),
-
-			torch.nn.AdaptiveAvgPool2d(8)
-		).to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))	#8x8
-
-		self.downsample_4 	= torch.nn.Sequential(
-			torch.nn.Conv2d(64,128,3,1,1,bias=False),
-			torch.nn.BatchNorm2d(128),
-			activation_fn(),
-
-			torch.nn.Conv2d(128,128,3,2,1,bias=False),
-			torch.nn.BatchNorm2d(128),
-			activation_fn(),
-			
-		).to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))	# 4x4
-
-		self.output 		= torch.nn.Sequential(
-			torch.nn.Conv2d(128,4,(4,4),1,0,bias=True),
-			torch.nn.Flatten(start_dim=1)
-		).to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))  # 4
+		self.layer1 		= torch.nn.Sequential(torch.nn.Conv2d(input_dim[0],32,3,1,1),torch.nn.BatchNorm2d(32))
+		self.layer2 		= torch.nn.Sequential(torch.nn.Conv2d(32,32,3,1,1),torch.nn.BatchNorm2d(32))
+		self.layer3 		= torch.nn.Sequential(torch.nn.Conv2d(32,32,3,1,1),torch.nn.BatchNorm2d(32))
+		self.layer4 		= torch.nn.Sequential(torch.nn.Conv2d(32,32,3,1,1),torch.nn.BatchNorm2d(32))
+		self.layer5 		= torch.nn.Sequential(torch.nn.Conv2d(32,32,3,1,1),torch.nn.BatchNorm2d(32))
+		self.layer6 		= torch.nn.Sequential(torch.nn.Conv2d(32,32,3,1,1),torch.nn.BatchNorm2d(32))
+		self.layer7 		= torch.nn.Sequential(torch.nn.Conv2d(32,32,3,1,1),torch.nn.BatchNorm2d(32))
+		self.layer8 		= torch.nn.Sequential(torch.nn.Conv2d(32,32,3,1,1),torch.nn.BatchNorm2d(32))
+		self.output_layer 	= torch.nn.Sequential(torch.nn.Flatten(start_dim=1),torch.nn.Linear(32*input_dim[1]*input_dim[2],4))
 
 
 	
 	def forward(self,x:torch.Tensor) ->torch.Tensor:
 
-		y 			= self.downsample_1(x)
-		y 			= self.downsample_2(y)
-		y 			= self.downsample_3(y)
-		y 			= self.downsample_4(y)
-		y 			= self.output(y)	
-		return 				y		
+		y 			= self.layer1(x)
+		y 			= self.layer2(y)
+		y 			= self.layer3(y)
+		y 			= self.layer4(y)
+		y 			= self.layer5(y)
+		y 			= self.layer6(y)
+		y 			= self.layer7(y)
+		y 			= self.layer8(y)
+		return 		self.output_layer(y)	
 
 
 class SnakeConvNetLg (SnakeNetwork):
@@ -166,107 +125,131 @@ class SnakeAdaptNet (SnakeNetwork):
 
 		super(SnakeAdaptNet,self).__init__(input_dim,loss_fn,activation_fn)
 
-		adapt_1 			= 32
-		adapt_2 			= 16
-		adapt_3 			= 8
+		adapt_1 			= 16
+		adapt_2 			= 8
+		adapt_3 			= 4
 		bias				= False
 
 		#Create model 
-		self.conv1 			= torch.nn.Conv2d(input_dim[0],8,5,1,0,bias=bias)
-		self.bn1 			= torch.nn.BatchNorm2d(8)
+		self.conv1 			= torch.nn.Conv2d(input_dim[0],16,5,1,0,bias=bias)
+		self.bn1 			= torch.nn.BatchNorm2d(16)
 
-		self.conv2 			= torch.nn.Conv2d(8,16,5,1,2,bias=bias)
+		self.conv2 			= torch.nn.Conv2d(16,16,5,1,2,bias=bias)
 		self.bn2 			= torch.nn.BatchNorm2d(16)
-
-		self.conv3 			= torch.nn.Conv2d(16,32,5,1,2,bias=bias)
-		self.bn3 			= torch.nn.BatchNorm2d(32)
 		self.avgpool1 		= torch.nn.AdaptiveAvgPool2d(adapt_1)
 
-		self.conv4 			= torch.nn.Conv2d(32,32,5,1,2,bias=bias)
-		self.bn4 			= torch.nn.BatchNorm2d(32)
+
+		self.conv3 			= torch.nn.Conv2d(16,64,5,1,2,bias=bias)
+		self.bn3 			= torch.nn.BatchNorm2d(64)
 		self.avgpool2 		= torch.nn.AdaptiveAvgPool2d(adapt_2)
 
-		self.conv5 			= torch.nn.Conv2d(32,32,5,1,2,bias=bias)
-		self.bn5 			= torch.nn.BatchNorm2d(32)
+		self.conv4 			= torch.nn.Conv2d(64,256,5,1,2,bias=bias)
+		self.bn4 			= torch.nn.BatchNorm2d(256)
 		self.avgpool3 		= torch.nn.AdaptiveAvgPool2d(adapt_3)
+
+		self.conv5 			= torch.nn.Conv2d(256,1024,(adapt_3,adapt_3),1,0,bias=bias)
+		self.bn5 			= torch.nn.BatchNorm2d(1024)
 	
-		self.lin1 			= torch.nn.Linear(32*8*8,128)
+		self.lin1 			= torch.nn.Linear(1024,128)
 		self.lin2 			= torch.nn.Linear(128,4)
 
 		
 	
 	def forward(self,x:torch.Tensor) ->torch.Tensor:
 		x 					= self.activation_fn(self.bn1(self.conv1(x)))
-
 		x 					= self.activation_fn(self.bn2(self.conv2(x)))
+		x 					= self.avgpool1(x)
+
 
 		x 					= self.activation_fn(self.bn3(self.conv3(x)))
-
-		x 					= self.avgpool1(x)
-		x 					= self.activation_fn(self.bn4(self.conv4(x)))
-
 		x 					= self.avgpool2(x)
-		x 					= self.activation_fn(self.bn5(self.conv5(x)))
 
+		x 					= self.activation_fn(self.bn4(self.conv4(x)))
 		x 					= self.avgpool3(x)
+
+		x 					= self.activation_fn(self.bn5(self.conv5(x)))
 
 		x 					= x.view(x.shape[0],-1)
 
 		x 					= self.activation_fn(self.lin1(x))
-		x 					= self.lin2(x)
 
-		return 				x 
+		return 				self.lin2(x)
 
 
-class SnakeVarNet (SnakeNetwork):
+class SnakeMegaNet (SnakeNetwork):
 
 	def __init__(self,input_dim,loss_fn,activation_fn):
 
-		super(SnakeVarNet,self).__init__(input_dim,loss_fn,activation_fn)
+		super(SnakeMegaNet,self).__init__(input_dim,loss_fn,activation_fn)
 
-		adapt_1 			= 64#int(input_dim[1]/2)
-		adapt_2 			= 32
-		adapt_3 			= 16#int(input_dim[1]/4)
-		adapt_4 			= 8
+		bias 				= False
+		adapt_1 			= 16
+		adapt_2 			= 8
+		adapt_3 			= 4
 
 		#Create model 
-		self.conv1 			= torch.nn.Conv2d(input_dim[0],8,3,1,0)
-
-		self.conv2 			= torch.nn.Conv2d(8,16,3,1,1)
-
-		self.conv3 			= torch.nn.Conv2d(16,64,5,2,2)
-
-		self.conv5 			= torch.nn.Conv2d(64,256,5,2,2)
-
-		self.conv7 			= torch.nn.Conv2d(256,512,5,2,2)
-
-		self.avgpool4		= torch.nn.AdaptiveAvgPool2d(adapt_4)
+		self.conv1 			= torch.nn.Conv2d(input_dim[0],8,5,1,2,bias=bias)
+		self.bn1 			= torch.nn.BatchNorm2d(8)
+		self.conv2 			= torch.nn.Conv2d(8,16,5,1,2,bias=bias)
+		self.bn2 			= torch.nn.BatchNorm2d(16)
+		self.conv3 			= torch.nn.Conv2d(16,32,5,1,2,bias=bias)
+		self.bn3 			= torch.nn.BatchNorm2d(32)
+		self.conv4 			= torch.nn.Conv2d(32,64,5,1,2,bias=bias)
+		self.bn4 			= torch.nn.BatchNorm2d(64)
+		self.avgpool1		= torch.nn.AdaptiveAvgPool2d(adapt_1)
 
 
-		self.lin1 			= torch.nn.Linear(512*adapt_4*adapt_4,512)
+		self.conv5 			= torch.nn.Conv2d(64,128,5,1,2,bias=bias)
+		self.bn5 			= torch.nn.BatchNorm2d(128)
+		self.conv6 			= torch.nn.Conv2d(128,256,5,1,2,bias=bias)
+		self.bn6 			= torch.nn.BatchNorm2d(256)
+		self.avgpool2 		= torch.nn.AdaptiveAvgPool2d(adapt_2)
 
-		self.lin2 			= torch.nn.Linear(512,4)
+		self.conv7 			= torch.nn.Conv2d(256,512,5,1,2,bias=bias)
+		self.bn7			= torch.nn.BatchNorm2d(512)
+		self.conv8 			= torch.nn.Conv2d(512,1024,5,1,2,bias=bias)
+		self.bn8			= torch.nn.BatchNorm2d(1024)
+		self.avgpool3 		= torch.nn.AdaptiveAvgPool2d(adapt_3)
 
-		
+		self.conv9 			= torch.nn.Conv2d(1024,1024,(adapt_3,adapt_3),1,0)
+		self.flat1 			= torch.nn.Flatten(start_dim=1)
+
+
+		self.lin1 			= torch.nn.Linear(1024,128)
+
+		self.lin2 			= torch.nn.Linear(128,4)
+
+	
 	
 	def forward(self,x:torch.Tensor) ->torch.Tensor:
-
-		x 					= self.activation_fn(self.conv1(x))
-		x 					= self.activation_fn(self.conv2(x))
+		
+		x 					= self.activation_fn(self.bn1(self.conv1(x)))
+		x 					= self.activation_fn(self.bn2(self.conv2(x)))
+		x 					= self.activation_fn(self.bn3(self.conv3(x)))
+		x 					= self.activation_fn(self.bn4(self.conv4(x)))
 		x 					= self.avgpool1(x)
 
-		x 					= self.activation_fn(self.conv3(x))
+		x 					= self.activation_fn(self.bn5(self.conv5(x)))
+		x 					= self.activation_fn(self.bn6(self.conv6(x)))
 		x 					= self.avgpool2(x)
 
-		x 					= self.activation_fn(self.conv5(x))
+		x 					= self.activation_fn(self.bn7(self.conv7(x)))
+		x 					= self.activation_fn(self.bn8(self.conv8(x)))
 		x 					= self.avgpool3(x)
 
-		x 					= self.activation_fn(self.conv7(x))
-		x 					= self.avgpool4(x)
+		x 					= self.activation_fn(self.conv9(x))
+		x 					= self.flat1(x)
 
-		x 					= x.view(x.shape[0],-1)
 		x 					= self.activation_fn(self.lin1(x))
-		x 					= self.lin2(x)
+		return 				self.lin2(x)
 
-		return 				x 
 
+
+
+if __name__ == "__main__":
+
+	m = SnakeConvNetSm((3,32,32),torch.nn.MSELoss,torch.nn.functional.relu)
+	print(f"n params: {sum([p.numel() for p in m.parameters()])}")
+
+	m = SnakeConvNetMd((3,32,32),torch.nn.MSELoss,torch.nn.functional.relu)
+	print(f"n params: {sum([p.numel() for p in m.parameters()])}")
